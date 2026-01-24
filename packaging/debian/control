@@ -1,0 +1,11 @@
+Package: audiowave
+Version: 0.3.0
+Section: sound
+Priority: optional
+Architecture: all
+Maintainer: Kosava <kosava@gmail.com>
+Depends: python3 (>= 3.11), python3-pyqt6, python3-mutagen,
+ gstreamer1.0-plugins-base, gstreamer1.0-plugins-good
+Description: Modern desktop audio player written in Python
+ AudioWave is a modern, lightweight desktop music player written in Python.
+ It features playlist management, plugin support, theming, and tray controls.

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BASE_DIR="$(cd "$SCRIPT_DIR/../lib/audiowave" && pwd)"
+
+exec python3 "$BASE_DIR/audiowave.py" "$@"

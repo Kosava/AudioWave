@@ -1,0 +1,6 @@
+PyQt6>=6.5.0
+mutagen>=1.46.0
+requests>=2.31.0
+python-vlc>=3.0.0
+umpy>=1.24.0
+Pillow>=10.0.0

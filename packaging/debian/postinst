@@ -1,0 +1,8 @@
+#!/bin/sh
+set -e
+
+chmod +x /usr/lib/audiowave/audiowave.py || true
+update-desktop-database -q || true
+update-icon-caches /usr/share/pixmaps || true
+
+exit 0

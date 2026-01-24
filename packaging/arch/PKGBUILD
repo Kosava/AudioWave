@@ -1,0 +1,39 @@
+pkgname=audiowave
+pkgver=0.3.0
+pkgrel=1
+pkgdesc="Modern desktop audio player written in Python"
+arch=('any')
+url="https://github.com/Kosava/AudioWave"
+license=('MIT')
+depends=(
+  'python'
+  'python-pyqt6'
+  'python-mutagen'
+  'gstreamer'
+  'gst-plugins-base'
+  'gst-plugins-good'
+)
+
+source=("git+$url.git")
+md5sums=('SKIP')
+
+package() {
+    cd "$srcdir/AudioWave"
+
+    # App files
+    install -d "$pkgdir/usr/lib/audiowave"
+    cp -r core ui plugins utils resources audiowave.py main.py requirements.txt \
+        "$pkgdir/usr/lib/audiowave"
+
+    # Launcher
+    install -Dm755 packaging/audiowave \
+        "$pkgdir/usr/bin/audiowave"
+
+    # Desktop entry
+    install -Dm644 packaging/arch/audiowave.desktop \
+        "$pkgdir/usr/share/applications/audiowave.desktop"
+
+    # Icon
+    install -Dm644 resources/icons/audiowave_color.png \
+        "$pkgdir/usr/share/pixmaps/audiowave.png"
+}
