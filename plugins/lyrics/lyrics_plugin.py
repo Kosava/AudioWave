@@ -139,8 +139,9 @@ class LyricsDialog(QDialog):
     Glavni Lyrics dialog za prikaz i pretragu tekstova.
     """
     
-    def __init__(self, parent=None, artist: str = "", title: str = ""):
+    def __init__(self, parent=None, engine=None, artist: str = "", title: str = ""):
         super().__init__(parent)
+        self.engine = engine  # <- DODATO radi kompatibilnosti sa plugin sistemom
         self.search_thread: Optional[LyricsSearchThread] = None
         self.parent_window = parent
         
@@ -467,7 +468,7 @@ class LyricsWidget(QWidget):
         self.lyrics_text.clear()
 
 
-def show_lyrics_dialog(parent=None, artist: str = "", title: str = ""):
+def show_lyrics_dialog(parent=None, engine=None, artist: str = "", title: str = ""):
     """Prikaži Lyrics dialog."""
-    dialog = LyricsDialog(parent, artist, title)
+    dialog = LyricsDialog(parent, engine, artist, title)
     dialog.exec()
