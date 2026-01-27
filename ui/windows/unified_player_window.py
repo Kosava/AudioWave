@@ -194,6 +194,9 @@ class UnifiedPlayerWindow(QMainWindow):
         # ðŸŽ¨ Primeni inicijalnu temu na title bar
         if self.use_custom_titlebar:
             QTimer.singleShot(100, self.apply_initial_theme_to_titlebar)
+        
+        # ✅ Load saved window geometry
+        QTimer.singleShot(150, self.load_window_geometry)
     
     def add_resize_grip(self):
         """
@@ -752,3 +755,132 @@ class UnifiedPlayerWindow(QMainWindow):
                 self.tray_notifications.minimized_to_tray()
         else:
             self.showMinimized()
+    # ===== WINDOW GEOMETRY PERSISTENCE =====
+    
+    def load_window_geometry(self):
+        """Load saved window geometry and state"""
+        try:
+            # Load geometry
+            geometry = self.config.get_window_geometry()
+            if geometry:
+                self.setGeometry(
+                    geometry['x'],
+                    geometry['y'],
+                    geometry['width'],
+                    geometry['height']
+                )
+                print(f"📐 Loaded geometry: {geometry['width']}x{geometry['height']}")
+            
+            # Load maximized state
+            if self.config.is_window_maximized():
+                self.showMaximized()
+                if self.use_custom_titlebar and hasattr(self, 'title_bar'):
+                    self.title_bar._is_maximized = True
+                    self.title_bar.update_icons()
+                print("🔲 Restored as maximized")
+            
+            # Load always on top
+            if self.config.is_always_on_top():
+                flags = self.windowFlags()
+                flags |= Qt.WindowType.WindowStaysOnTopHint
+                self.setWindowFlags(flags)
+                self.show()
+                
+                if self.use_custom_titlebar and hasattr(self, 'title_bar'):
+                    self.title_bar._is_always_on_top = True
+                    if hasattr(self.title_bar, 'always_on_top_action'):
+                        self.title_bar.always_on_top_action.setChecked(True)
+                
+                print("📌 Always on top restored")
+        
+        except Exception as e:
+            print(f"⚠️ Error loading geometry: {e}")
+    
+    def save_window_geometry(self):
+        """Save window geometry and state"""
+        try:
+            # Get maximized state
+            is_maximized = self.isMaximized()
+            if self.use_custom_titlebar and hasattr(self, 'title_bar'):
+                is_maximized = self.title_bar.is_window_maximized()
+            
+            # Save geometry (only if not maximized)
+            if not is_maximized:
+                geom = self.geometry()
+                self.config.set_window_geometry({
+                    'x': geom.x(),
+                    'y': geom.y(),
+                    'width': geom.width(),
+                    'height': geom.height()
+                }, auto_save=False)
+                print(f"💾 Saved geometry: {geom.width()}x{geom.height()}")
+            
+            # Save maximized state
+            self.config.set_window_maximized(is_maximized, auto_save=False)
+            
+            # Save always on top
+            if self.use_custom_titlebar and hasattr(self, 'title_bar'):
+                always_on_top = self.title_bar.is_always_on_top()
+                self.config.set_always_on_top(always_on_top, auto_save=False)
+            
+            # Save all
+            self.config.save()
+            print("✅ Window state saved")
+        
+        except Exception as e:
+            print(f"⚠️ Error saving geometry: {e}")
+    
+    def closeEvent(self, event):
+        """Handle window close event"""
+        print("👋 Closing window...")
+        
+        # Save window state
+        self.save_window_geometry()
+        
+        # Check close to tray
+        if self.tray_settings.get("close_to_tray", True):
+            event.ignore()
+            self.minimize_to_tray()
+            return
+        
+        # Cleanup
+        try:
+            self.config.set_tray_settings(self.tray_settings, auto_save=False)
+            self.config.save()
+            
+            if hasattr(self.tray_icon, 'cleanup'):
+                self.tray_icon.cleanup()
+            
+            if hasattr(self.engine, 'cleanup'):
+                self.engine.cleanup()
+        except Exception as e:
+            print(f"⚠️ Cleanup error: {e}")
+        
+        event.accept()
+        print("✅ Closed")
+    
+    def moveEvent(self, event):
+        """Handle window move - debounced save"""
+        super().moveEvent(event)
+        
+        if not hasattr(self, '_geometry_save_timer'):
+            self._geometry_save_timer = QTimer()
+            self._geometry_save_timer.setSingleShot(True)
+            self._geometry_save_timer.timeout.connect(self._save_geometry_debounced)
+        
+        self._geometry_save_timer.stop()
+        self._geometry_save_timer.start(1000)
+    
+    def _save_geometry_debounced(self):
+        """Save geometry after delay"""
+        try:
+            if not self.isMaximized():
+                geom = self.geometry()
+                self.config.set_window_geometry({
+                    'x': geom.x(),
+                    'y': geom.y(),
+                    'width': geom.width(),
+                    'height': geom.height()
+                })
+        except Exception as e:
+            print(f"⚠️ Debounced save error: {e}")

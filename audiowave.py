@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # audiowave.py - AudioWave Player sa ThemeManager integracijom
-# Version 0.3.1 - Sa GStreamer EQ podrškom
+# Version 0.3.2 - Sa GStreamer EQ podrškom + THEME PERSISTENCE
 
 import sys
 import os
@@ -75,47 +75,51 @@ class AudioWaveApp:
         except Exception:
             pass
 
-        # Core komponente
+        # ===== CORE KOMPONENTE =====
         print("🔧 Initializing core components...")
+        
+        # ✅ 1. Config se učitava PRVO (sa load() metodom)
         self.config = Config()
-
-        # ✅ KORISTI FACTORY ZA ENGINE (GStreamer ako je dostupan)
+        print(f"📋 Config loaded from: {self.config.get_config_path()}")
+        
+        # ✅ 2. Engine
         self.engine = create_audio_engine()
-
+        
+        # ✅ 3. Playlist Manager
         self.playlist_manager = PlaylistManager()
 
-        # Theme Manager
+        # ===== THEME MANAGER SA CONFIG INTEGRATION =====
         print("🎨 Initializing theme manager...")
-        self.theme_manager = ThemeManager()
-
-        # Poveži engine sa app
+        
+        # ✅ Pass config to ThemeManager
+        self.theme_manager = ThemeManager(self.config)
+        
+        # Povezi engine sa app
         self.engine.app = self
 
+        # ===== MAIN WINDOW =====
         print("🪟 Creating unified window...")
-        # Inicijalizuj samo UnifiedPlayerWindow
         self.main_window = UnifiedPlayerWindow(self)
 
-        # Dodaj window atribut za kompatibilnost
+        # Atributi za kompatibilnost
         self.window = self.main_window
-
-        # Atribut za unified_window kompatibilnost
         self.unified_window = self.main_window
+
+        # ===== LOAD SAVED THEME =====
+        print("🎨 Loading saved theme...")
+        saved_theme = self.config.get_theme()
+        print(f"📖 Saved theme: {saved_theme}")
+        
+        # ✅ Apply saved theme (without re-saving)
+        self.theme_manager.load_saved_theme(self.main_window)
+        
+        print(f"✅ Applied theme: {self.theme_manager.current_theme}")
 
         # Verifikacija teme
         print("🎨 Theme system verification:")
-        print(f"   Available themes: {self.theme_manager.get_available_themes()}")
+        print(f"   Available themes: {len(self.theme_manager.get_available_themes())} themes")
         print(f"   Current theme: {self.theme_manager.current_theme}")
-
-        # Testiraj temu direktno
-        print("🎨 Testing theme application...")
-        if hasattr(self.theme_manager, "apply_to_all_windows"):
-            print("🎨 Using apply_to_all_windows method")
-            self.theme_manager.apply_to_all_windows(self.main_window, "Ocean")
-        else:
-            print("🎨 Using apply_theme method")
-            self.theme_manager.apply_theme(self.main_window, "Ocean")
-
-        print("✅ Theme test completed")
+        print(f"   Is dark: {self.theme_manager.is_dark_theme()}")
 
         # Refresh UI
         self.main_window.repaint()
@@ -168,9 +172,31 @@ class AudioWaveApp:
                 self.playlist_manager.playlist_changed.connect(
                     lambda: self.main_window.show_message("Playlist updated")
                 )
+            
+            # ✅ Theme changed signal
+            self.theme_manager.theme_changed.connect(self.on_theme_changed)
 
         except Exception as e:
             print(f"⚠️ Error setting up connections: {e}")
+    
+    def on_theme_changed(self, theme_name: str):
+        """Called when theme changes"""
+        print(f"🎨 Theme changed to: {theme_name}")
+        print(f"💾 Theme saved to config")
+        
+        # Refresh UI components that might need updating
+        try:
+            if hasattr(self.main_window, 'title_bar'):
+                # Update title bar colors if it exists
+                if hasattr(self.main_window.title_bar, 'update_from_theme'):
+                    theme = self.theme_manager.registry.get_theme(theme_name)
+                    self.main_window.title_bar.update_from_theme(theme)
+            
+            # Refresh main window
+            self.main_window.repaint()
+            QApplication.processEvents()
+        except Exception as e:
+            print(f"⚠️ Error refreshing UI after theme change: {e}")
 
     def on_playback_started(self, filepath):
         """Ažuriraj stanje kada pesma krene"""
@@ -251,6 +277,32 @@ class AudioWaveApp:
 
         except Exception as e:
             print(f"⚠️ Error adding music: {e}")
+    
+    def shutdown(self):
+        """Clean shutdown - save state"""
+        print("💾 Saving application state...")
+        
+        try:
+            # Save window geometry
+            if hasattr(self.main_window, 'geometry'):
+                geom = self.main_window.geometry()
+                self.config.set_window_geometry({
+                    'x': geom.x(),
+                    'y': geom.y(),
+                    'width': geom.width(),
+                    'height': geom.height()
+                })
+            
+            # Save volume
+            if hasattr(self.engine, 'volume'):
+                self.config.set_volume(self.engine.volume())
+            
+            # Final config save
+            self.config.save()
+            print("✅ Application state saved")
+            
+        except Exception as e:
+            print(f"⚠️ Error saving state: {e}")
 
     def run(self):
         """Pokreni aplikaciju"""
@@ -298,6 +350,26 @@ def debug_eq_info(player):
     print("=" * 50 + "\n")
 
 
+def debug_theme_info(player):
+    """Debug info o theme persistence"""
+    print("\n" + "=" * 50)
+    print("🎨 THEME PERSISTENCE DEBUG")
+    print("=" * 50)
+    
+    print(f"   Config file: {player.config.get_config_path()}")
+    print(f"   Config exists: {player.config.get_config_path().exists()}")
+    print(f"   Saved theme: {player.config.get_theme()}")
+    print(f"   Current theme: {player.theme_manager.current_theme}")
+    print(f"   Themes match: {player.config.get_theme() == player.theme_manager.current_theme}")
+    
+    if player.config.get_theme() == player.theme_manager.current_theme:
+        print("\n   ✅ THEME PERSISTENCE WORKING!")
+    else:
+        print("\n   ⚠️ Theme mismatch - check integration")
+    
+    print("=" * 50 + "\n")
+
+
 def main():
     """Glavna funkcija sa sigurnim zatvaranjem"""
     try:
@@ -309,12 +381,18 @@ def main():
 
         # ✅ DEBUG: Prikaži EQ info
         debug_eq_info(player)
+        
+        # ✅ DEBUG: Prikaži theme persistence info
+        debug_theme_info(player)
 
         exit_code = player.run()
 
         print("=" * 50)
         print("👋 Shutting down AudioWave...")
         print("=" * 50)
+
+        # ✅ Save state before shutdown
+        player.shutdown()
 
         # Čisto zatvaranje
         if hasattr(player, "engine"):

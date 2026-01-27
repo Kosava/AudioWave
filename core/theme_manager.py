@@ -1,8 +1,11 @@
-# core/theme_manager.py - NOVA VERZIJA
+# -*- coding: utf-8 -*-
+# core/theme_manager.py
 
 """
-Centralized Theme Manager - Clean & Modular
-Refactored: ~100 lines instead of 700+
+Centralized Theme Manager with Config Integration
+✅ Loads saved theme on startup
+✅ Saves theme when changed
+✅ Clean & Modular
 """
 
 import json
@@ -16,15 +19,29 @@ from .themes.base_theme import BaseTheme
 
 
 class ThemeManager(QObject):
-    """Manages application themes - Clean version"""
+    """Manages application themes with persistence"""
     
     theme_changed = pyqtSignal(str)
     theme_applied = pyqtSignal(str, bool)
     
-    def __init__(self):
+    def __init__(self, config=None):
+        """
+        Initialize ThemeManager.
+        
+        Args:
+            config: Config instance (optional, for theme persistence)
+        """
         super().__init__()
-        self.current_theme = "Dark Modern"
+        self.config = config
         self.registry = ThemeRegistry
+        
+        # Load saved theme from config (or use default)
+        if self.config:
+            self.current_theme = self.config.get_theme()
+            print(f"🎨 Loading saved theme: {self.current_theme}")
+        else:
+            self.current_theme = "Dark Modern"
+            print(f"⚠️ No config provided, using default theme")
         
         # Load custom themes from JSON if exists
         self._load_custom_themes()
@@ -56,8 +73,18 @@ class ThemeManager(QObject):
             theme_name = self.current_theme
         return self.registry.is_dark_theme(theme_name)
     
-    def apply_theme(self, widget, theme_name: str) -> bool:
-        """Apply theme to a widget"""
+    def apply_theme(self, widget, theme_name: str, save_to_config: bool = True) -> bool:
+        """
+        Apply theme to a widget.
+        
+        Args:
+            widget: Widget to apply theme to
+            theme_name: Name of theme to apply
+            save_to_config: Save theme selection to config (default: True)
+        
+        Returns:
+            bool: True if successful
+        """
         try:
             theme = self.registry.get_theme(theme_name)
             theme_data = theme.get_theme_data()
@@ -77,6 +104,11 @@ class ThemeManager(QObject):
             # Update current theme
             self.current_theme = theme_name
             
+            # ✅ SAVE TO CONFIG
+            if save_to_config and self.config:
+                self.config.set_theme(theme_name)
+                print(f"💾 Theme '{theme_name}' saved to config")
+            
             # Emit signals
             self.theme_changed.emit(theme_name)
             self.theme_applied.emit(theme_name, True)
@@ -95,9 +127,9 @@ class ThemeManager(QObject):
             self.theme_applied.emit(theme_name, False)
             return False
     
-    def apply_to_all_windows(self, main_window, theme_name: str) -> bool:
+    def apply_to_all_windows(self, main_window, theme_name: str, save_to_config: bool = True) -> bool:
         """Apply theme to all windows"""
-        return self.apply_theme(main_window, theme_name)
+        return self.apply_theme(main_window, theme_name, save_to_config)
     
     def get_current_theme(self) -> str:
         """Get currently applied theme name"""
@@ -108,25 +140,47 @@ class ThemeManager(QObject):
         print("🔄 Reloading themes...")
         self._load_custom_themes()
         print(f"✅ Themes reloaded: {len(self.registry.get_theme_names())} available")
+    
+    def load_saved_theme(self, widget) -> bool:
+        """
+        Load and apply saved theme from config.
+        
+        Args:
+            widget: Widget to apply theme to
+            
+        Returns:
+            bool: True if successful
+        """
+        if not self.config:
+            print("⚠️ No config available, cannot load saved theme")
+            return False
+        
+        saved_theme = self.config.get_theme()
+        print(f"📖 Loading saved theme: {saved_theme}")
+        
+        # Apply without saving again (avoid redundant save)
+        return self.apply_theme(widget, saved_theme, save_to_config=False)
 
 
 # ============================================================
 # USAGE EXAMPLE:
 # ============================================================
 """
+from core.config import Config
 from core.theme_manager import ThemeManager
 
-# Initialize
-theme_mgr = ThemeManager()
+# Initialize with config
+config = Config()
+theme_mgr = ThemeManager(config)
 
-# Get available themes
-themes = theme_mgr.get_available_themes()
-print(themes)  # ['Cotton Candy', 'Cyberpunk', 'Dark Modern', ...]
+# Load saved theme on startup
+theme_mgr.load_saved_theme(main_window)
 
-# Apply theme
-theme_mgr.apply_theme(main_window, "Nordic Light")
+# User changes theme
+theme_mgr.apply_theme(main_window, "Nordic Light")  # Automatically saved!
 
-# Check if dark
-is_dark = theme_mgr.is_dark_theme("Ocean")  # True
-is_light = theme_mgr.is_dark_theme("Mint Fresh")  # False
+# Next startup
+config2 = Config()
+theme_mgr2 = ThemeManager(config2)
+# theme_mgr2.current_theme will be "Nordic Light"
 """
