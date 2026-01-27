@@ -21,22 +21,22 @@ from typing import Dict, List, Optional
 
 
 # ===== EQ PRESETI =====
-EQ_PRESETS: Dict[str, List[float]] = {
-    "Flat": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    "Rock": [5, 4, 3, 1, -1, -1, 0, 2, 3, 4],
-    "Pop": [1, 2, 3, 4, 3, 1, 0, -1, -1, -1],
-    "Jazz": [4, 3, 1, 2, -2, -2, 0, 1, 2, 3],
-    "Classical": [5, 4, 3, 2, -1, -2, 0, 2, 3, 4],
-    "Bass Boost": [6, 5, 4, 2, 0, 0, 0, 0, 0, 0],
-    "Treble Boost": [0, 0, 0, 0, 0, 0, 2, 4, 5, 6],
-    "Vocal": [-2, -1, 0, 2, 4, 4, 3, 2, 0, -1],
-    "Electronic": [5, 4, 2, 0, -2, 0, 2, 4, 5, 5],
-    "Hip-Hop": [5, 4, 3, 1, -1, -1, 1, 2, 3, 4],
-    "R&B": [3, 4, 5, 3, -1, -1, 2, 3, 3, 2],
-    "Acoustic": [4, 3, 2, 1, 1, 1, 2, 3, 3, 3],
-    "Dance": [5, 4, 2, 0, 0, -1, 1, 3, 4, 5],
-    "Loudness": [4, 3, 0, 0, -2, 0, -1, -1, 4, 3],
-    "Custom": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+EQ_PRESETS: Dict[str, Dict[str, any]] = {
+    "Flat": {"gains": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "preamp": 0},
+    "Rock": {"gains": [5, 4, 3, 1, -1, -1, 0, 2, 3, 4], "preamp": 2},
+    "Pop": {"gains": [1, 2, 3, 4, 3, 1, 0, -1, -1, -1], "preamp": 1},
+    "Jazz": {"gains": [4, 3, 1, 2, -2, -2, 0, 1, 2, 3], "preamp": 1},
+    "Classical": {"gains": [5, 4, 3, 2, -1, -2, 0, 2, 3, 4], "preamp": 2},
+    "Bass Boost": {"gains": [6, 5, 4, 2, 0, 0, 0, 0, 0, 0], "preamp": 3},
+    "Treble Boost": {"gains": [0, 0, 0, 0, 0, 0, 2, 4, 5, 6], "preamp": 2},
+    "Vocal": {"gains": [-2, -1, 0, 2, 4, 4, 3, 2, 0, -1], "preamp": 0},
+    "Electronic": {"gains": [5, 4, 2, 0, -2, 0, 2, 4, 5, 5], "preamp": 1},
+    "Hip-Hop": {"gains": [5, 4, 3, 1, -1, -1, 1, 2, 3, 4], "preamp": 2},
+    "R&B": {"gains": [3, 4, 5, 3, -1, -1, 2, 3, 3, 2], "preamp": 1},
+    "Acoustic": {"gains": [4, 3, 2, 1, 1, 1, 2, 3, 3, 3], "preamp": 0},
+    "Dance": {"gains": [5, 4, 2, 0, 0, -1, 1, 3, 4, 5], "preamp": 2},
+    "Loudness": {"gains": [4, 3, 0, -2, -4, -4, -2, 0, 3, 4], "preamp": 3},
+    "Custom": {"gains": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], "preamp": 0}
 }
 
 # Frekvencije za 10-band EQ
@@ -101,10 +101,23 @@ class EqualizerDialog(QDialog):
     
     eq_changed = pyqtSignal(list)
     
-    def __init__(self, parent=None, engine=None):
+    def __init__(self, parent=None, engine=None, app=None):
         super().__init__(parent)
         self.engine = engine
+        self.app = app
         self.parent_window = parent
+        
+        # Ako nema engine-a, pokušaj da ga dobiješ iz app ili parent
+        if not self.engine:
+            if app and hasattr(app, 'engine'):
+                self.engine = app.engine
+                print(f"🔊 [EQ] Got engine from app: {type(self.engine).__name__}")
+            elif parent and hasattr(parent, 'app') and hasattr(parent.app, 'engine'):
+                self.engine = parent.app.engine
+                print(f"🔊 [EQ] Got engine from parent: {type(self.engine).__name__}")
+            else:
+                print(f"⚠️ [EQ] No engine provided and cannot find one!")
+        
         self.bands: List[EQBandSlider] = []
         self.current_preset = "Flat"
         self.is_enabled = True
@@ -113,6 +126,9 @@ class EqualizerDialog(QDialog):
         # Proveri da li engine podržava EQ
         self.has_real_eq = self._check_eq_support()
         
+        print(f"🎛️ [EQ] Dialog initialized with engine: {type(self.engine).__name__ if self.engine else 'None'}")
+        print(f"🎛️ [EQ] Has real EQ: {self.has_real_eq}")
+        
         self.setup_ui()
         self.apply_theme_style()
         
@@ -120,26 +136,81 @@ class EqualizerDialog(QDialog):
         self._load_from_engine()
     
     def _check_eq_support(self) -> bool:
-        """Proveri da li engine ima pravi EQ"""
-        if self.engine and hasattr(self.engine, 'set_equalizer'):
-            # Proveri da li je GStreamer engine
-            engine_class = self.engine.__class__.__name__
-            if engine_class == "GStreamerEngine":
-                return True
-        return False
+        """Proveri da li engine ima pravi EQ (GStreamer)"""
+        if not self.engine:
+            print("⚠️ [EQ] No engine provided for EQ support check")
+            return False
+
+        try:
+            engine_class = type(self.engine).__name__
+            engine_module = type(self.engine).__module__
+            
+            print(f"🔍 [EQ] Engine type: {engine_class}")
+            print(f"🔍 [EQ] Engine module: {engine_module}")
+            
+            # Proveri da li je GStreamer
+            is_gstreamer = (
+                "GStreamerEngine" in engine_class or
+                "gstreamer_engine" in engine_module.lower() or
+                hasattr(self.engine, "equalizer") or
+                hasattr(self.engine, "_eq_values")
+            )
+            
+            print(f"🔍 [EQ] Is GStreamer engine: {is_gstreamer}")
+            
+            # Dodatna provera - ako engine ima has_equalizer metodu
+            if hasattr(self.engine, 'has_equalizer'):
+                real_eq = self.engine.has_equalizer()
+                print(f"🎛️ [EQ] Engine.has_equalizer() = {real_eq}")
+                return real_eq
+            
+            print(f"🎛️ [EQ] Real EQ detection: {is_gstreamer}")
+            return bool(is_gstreamer)
+
+        except Exception as e:
+            print(f"⚠️ [EQ] Engine detection error: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
     
     def _load_from_engine(self):
         """Učitaj EQ vrednosti iz engine-a"""
-        if self.engine and hasattr(self.engine, 'get_equalizer'):
-            try:
+        if not self.engine:
+            print("⚠️ [EQ] No engine to load EQ values from")
+            return
+
+        try:
+            print(f"🔍 [EQ] Trying to load EQ values from engine...")
+            
+            # Proveri različite metode za dobijanje EQ vrednosti
+            if hasattr(self.engine, 'get_equalizer'):
                 values = self.engine.get_equalizer()
+                print(f"🔍 [EQ] Got EQ values via get_equalizer(): {values}")
                 if values and len(values) == 10:
                     self._updating_preset = True
                     for i, band in enumerate(self.bands):
                         band.set_value(values[i])
                     self._updating_preset = False
-            except:
-                pass
+                    print(f"✅ [EQ] Loaded EQ values from engine")
+                    return
+            
+            if hasattr(self.engine, '_eq_values'):
+                values = self.engine._eq_values
+                print(f"🔍 [EQ] Got EQ values via _eq_values: {values}")
+                if values and len(values) == 10:
+                    self._updating_preset = True
+                    for i, band in enumerate(self.bands):
+                        band.set_value(values[i])
+                    self._updating_preset = False
+                    print(f"✅ [EQ] Loaded EQ values from _eq_values")
+                    return
+            
+            print(f"⚠️ [EQ] Could not load EQ values from engine")
+            
+        except Exception as e:
+            print(f"⚠️ [EQ] Error loading EQ from engine: {e}")
+            import traceback
+            traceback.print_exc()
     
     def setup_ui(self):
         self.setWindowTitle("🎛️ Equalizer")
@@ -224,93 +295,153 @@ class EqualizerDialog(QDialog):
         
         footer_layout.addStretch()
         
-        # Apply button (za Qt Multimedia - priprema za buduće)
-        if not self.has_real_eq:
-            apply_btn = QPushButton("💾 Save Preset")
-            apply_btn.clicked.connect(self._save_preset)
-            apply_btn.setFixedWidth(100)
-            apply_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-            footer_layout.addWidget(apply_btn)
-        
-        # Close button
-        close_btn = QPushButton("Close")
-        close_btn.clicked.connect(self.accept)
-        close_btn.setFixedWidth(80)
-        close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        footer_layout.addWidget(close_btn)
+        # Save preset button
+        save_btn = QPushButton("💾 Save Preset")
+        save_btn.clicked.connect(self._save_preset)
+        save_btn.setFixedWidth(120)
+        save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        footer_layout.addWidget(save_btn)
         
         layout.addLayout(footer_layout)
     
-    def _on_enable_toggled(self, enabled: bool):
-        """Toggle EQ on/off"""
-        self.is_enabled = enabled
-        
-        for band in self.bands:
-            band.setEnabled(enabled)
-        
-        self.preset_combo.setEnabled(enabled)
-        
+    def _on_enable_toggled(self, checked: bool):
+        self.is_enabled = checked
         if self.engine and hasattr(self.engine, 'enable_equalizer'):
-            self.engine.enable_equalizer(enabled)
-        
-        if not enabled:
-            self._apply_to_engine([0.0] * 10)
+            self.engine.enable_equalizer(checked)
+            print(f"🎛️ [EQ] Equalizer {'enabled' if checked else 'disabled'}")
         else:
-            self._apply_to_engine(self.get_eq_values())
+            print(f"⚠️ [EQ] Engine doesn't have enable_equalizer method")
     
     def _on_preset_changed(self, preset_name: str):
-        """Primeni preset"""
         if self._updating_preset:
             return
-        
-        if preset_name in EQ_PRESETS and preset_name != "Custom":
-            self.current_preset = preset_name
-            values = EQ_PRESETS[preset_name]
-            
+
+        if preset_name in EQ_PRESETS:
+            preset_data = EQ_PRESETS[preset_name]
+            values = preset_data["gains"]
+            preamp = preset_data.get("preamp", 0)
+
+            print(f"🎛️ [EQ] Applying preset: {preset_name}")
+            print(f"🎛️ [EQ] Values: {values}, Preamp: {preamp}")
+
             self._updating_preset = True
             for i, band in enumerate(self.bands):
                 band.set_value(float(values[i]))
             self._updating_preset = False
-            
-            self._apply_to_engine([float(v) for v in values])
+
+            # 🔥 PRIMENI PRESET NA ENGINE
+            self._apply_to_engine(values, preamp)
+
+            self.current_preset = preset_name
     
     def _on_band_changed(self, band_index: int, value: float):
         """Kada se promeni vrednost banda"""
         if self._updating_preset:
             return
+
+        print(f"🎛️ [EQ] Band {band_index} changed to {value}dB")
         
-        # Primeni na engine odmah (real-time)
+        # 🔥 PRAVA VEZA SA GStreamerEngine
         if self.has_real_eq and self.engine:
-            self.engine.set_equalizer_band(band_index, value)
-        
+            try:
+                # Prvo pokušaj sa set_eq_band
+                if hasattr(self.engine, "set_eq_band"):
+                    self.engine.set_eq_band(band_index, float(value))
+                    print(f"✅ [EQ] Applied band {band_index} via set_eq_band")
+                # Pokušaj sa equalizer elementom
+                elif hasattr(self.engine, "equalizer") and self.engine.equalizer:
+                    self.engine.equalizer.set_property(f"band{band_index}", float(value))
+                    print(f"✅ [EQ] Applied band {band_index} via equalizer element")
+                # Pokušaj sa set_equalizer
+                elif hasattr(self.engine, "set_equalizer"):
+                    # Treba da ažuriramo celu listu
+                    current_values = self.get_eq_values()
+                    self.engine.set_equalizer(current_values, 0.0)
+                    print(f"✅ [EQ] Applied all bands via set_equalizer")
+                else:
+                    print(f"⚠️ [EQ] Engine doesn't have EQ application methods!")
+                    eq_methods = [m for m in dir(self.engine) if 'eq' in m.lower() or 'band' in m.lower()]
+                    print(f"🔍 [EQ] Available EQ methods: {eq_methods}")
+            except Exception as e:
+                print(f"⚠️ [EQ] Error applying band {band_index}: {e}")
+                import traceback
+                traceback.print_exc()
+
         # Proveri da li odgovara nekom presetu
         current_values = self.get_eq_values()
-        
+
         matched_preset = None
-        for name, values in EQ_PRESETS.items():
+        for name, preset in EQ_PRESETS.items():
             if name != "Custom":
+                values = preset["gains"]
                 if all(abs(current_values[i] - values[i]) < 0.5 for i in range(10)):
                     matched_preset = name
                     break
-        
+
         self._updating_preset = True
         if matched_preset:
             self.preset_combo.setCurrentText(matched_preset)
         else:
             self.preset_combo.setCurrentText("Custom")
         self._updating_preset = False
-        
+
         self.eq_changed.emit(current_values)
     
-    def _apply_to_engine(self, values: List[float]):
-        """Primeni EQ vrednosti na engine"""
-        if self.engine and hasattr(self.engine, 'set_equalizer'):
-            self.engine.set_equalizer(values)
+    def _apply_to_engine(self, values: List[float], preamp: float = 0.0):
+        """Primeni EQ vrednosti na engine - SA DEBUG ISPISIMA"""
+        if not self.engine:
+            print("❌ [EQ] No engine to apply EQ to")
+            return
+
+        print(f"🎛️ [EQ] Applying EQ to engine: {values}")
+        print(f"🎛️ [EQ] Engine type: {type(self.engine).__name__}")
+        print(f"🎛️ [EQ] Engine has_equalizer: {hasattr(self.engine, 'has_equalizer') and self.engine.has_equalizer()}")
         
+        try:
+            # Prvo pokušaj sa set_equalizer (GStreamer ima ovo)
+            if hasattr(self.engine, 'set_equalizer'):
+                print(f"✅ [EQ] Engine has set_equalizer method")
+                try:
+                    # GStreamer podržava preamp
+                    if hasattr(self.engine, '_eq_preamp'):
+                        success = self.engine.set_equalizer(values, preamp)
+                        print(f"✅ [EQ] Applied via set_equalizer(values, preamp={preamp}), success={success}")
+                    else:
+                        success = self.engine.set_equalizer(values)
+                        print(f"✅ [EQ] Applied via set_equalizer(values), success={success}")
+                    return
+                except Exception as e:
+                    print(f"⚠️ [EQ] set_equalizer failed: {e}")
+
+            # Alternativni načini
+            elif hasattr(self.engine, 'set_eq_band'):
+                print(f"✅ [EQ] Engine has set_eq_band method")
+                for i, value in enumerate(values):
+                    self.engine.set_eq_band(i, value)
+                print(f"✅ [EQ] Applied via set_eq_band for all bands")
+                return
+
+            elif hasattr(self.engine, 'equalizer') and self.engine.equalizer:
+                print(f"✅ [EQ] Engine has equalizer element")
+                for i, v in enumerate(values):
+                    self.engine.equalizer.set_property(f"band{i}", float(v))
+                print(f"✅ [EQ] Applied via equalizer element")
+                return
+
+            else:
+                print(f"❌ [EQ] Engine has NO EQ methods!")
+                print(f"🔍 [EQ] Engine methods: {[m for m in dir(self.engine) if 'eq' in m.lower() or 'band' in m.lower()]}")
+
+        except Exception as e:
+            print(f"❌ [EQ] Error applying EQ: {e}")
+            import traceback
+            traceback.print_exc()
+
         self.eq_changed.emit(values)
     
     def _reset_eq(self):
         """Reset na Flat"""
+        print("🎛️ [EQ] Resetting EQ to Flat")
         self.preset_combo.setCurrentText("Flat")
     
     def _save_preset(self):
@@ -322,6 +453,7 @@ class EqualizerDialog(QDialog):
             "Note: Presets are saved for the session.\n"
             "Permanent preset saving coming soon."
         )
+        print("🎛️ [EQ] Custom preset saved (session only)")
     
     def get_eq_values(self) -> List[float]:
         """Vrati listu vrednosti svih bandova"""
@@ -329,12 +461,13 @@ class EqualizerDialog(QDialog):
     
     def set_eq_values(self, values: List[float]):
         """Postavi vrednosti svih bandova"""
+        print(f"🎛️ [EQ] Setting EQ values: {values}")
         self._updating_preset = True
         for i, value in enumerate(values):
             if i < len(self.bands):
                 self.bands[i].set_value(value)
         self._updating_preset = False
-        self._apply_to_engine(values)
+        self._apply_to_engine(values, 0.0)
     
     def apply_theme_style(self):
         """Primeni stil koji prati temu"""
@@ -344,7 +477,7 @@ class EqualizerDialog(QDialog):
         text = "#ffffff"
         
         # Accent boja za EQ status
-        eq_accent = "#4ade80" if self.has_real_eq else "#667eea"
+        eq_accent = "#4ade80" if self.has_real_eq else "#f59e0b"
         
         try:
             if self.parent_window:
@@ -354,6 +487,7 @@ class EqualizerDialog(QDialog):
                         bg = "#f0f0f5"
                         text = "#333333"
                         primary = "#5a6fd6"
+                        eq_accent = "#059669" if self.has_real_eq else "#d97706"
         except:
             pass
         
@@ -409,7 +543,6 @@ class EqualizerDialog(QDialog):
                 border-radius: 6px;
                 padding: 8px 12px;
                 color: {text};
-                font-size: 13px;
             }}
             
             QComboBox::drop-down {{
@@ -467,9 +600,10 @@ class EqualizerWidget(QWidget):
     
     eq_changed = pyqtSignal(list)
     
-    def __init__(self, parent=None, engine=None):
+    def __init__(self, parent=None, engine=None, app=None):
         super().__init__(parent)
         self.engine = engine
+        self.app = app
         self.bands: List[EQBandSlider] = []
         self.setup_ui()
     
@@ -505,7 +639,8 @@ class EqualizerWidget(QWidget):
     
     def _on_preset_changed(self, preset_name: str):
         if preset_name in EQ_PRESETS:
-            values = EQ_PRESETS[preset_name]
+            preset_data = EQ_PRESETS[preset_name]
+            values = preset_data["gains"]
             for i, band in enumerate(self.bands):
                 band.set_value(float(values[i]))
     
@@ -521,7 +656,29 @@ class EqualizerWidget(QWidget):
                 self.bands[i].set_value(value)
 
 
-def show_equalizer(parent=None, engine=None):
-    """Prikaži Equalizer dialog."""
-    dialog = EqualizerDialog(parent, engine)
-    dialog.exec()
+class EqualizerPlugin:
+    """Main plugin class za Equalizer - za PluginManager registraciju"""
+    
+    def __init__(self, app=None):
+        self.app = app
+        self.name = "Equalizer"
+        self.id = "equalizer"
+        self.version = "1.0.0"
+        self.description = "10-band equalizer with presets"
+        self.author = "AudioWave"
+        
+        # Dialog i widget klase (za PluginManager)
+        self.Dialog = EqualizerDialog
+        self.Widget = EqualizerWidget
+    
+    def get_dialog(self, parent=None, **kwargs):
+        """Vrati instancu dijaloga"""
+        if self.app and 'app' not in kwargs:
+            kwargs['app'] = self.app
+        return self.Dialog(parent, **kwargs)
+    
+    def get_widget(self, parent=None, **kwargs):
+        """Vrati instancu widgeta"""
+        if self.app and 'app' not in kwargs:
+            kwargs['app'] = self.app
+        return self.Widget(parent, **kwargs)

@@ -26,7 +26,7 @@ try:
     )
 except ImportError:
     APP_NAME = "AudioWave"
-    APP_VERSION = "0.3.0"
+    APP_VERSION = "0.3.1"
     APP_DESCRIPTION = "Modern desktop music player with theme support"
     AUTHOR_NAME = "Košava"
     AUTHOR_GITHUB = "https://github.com/Kosava"
@@ -249,6 +249,12 @@ class SettingsDialog(QDialog):
         self.plugin_cards = {}
         self.available_backends = detect_available_backends()
         
+        # Get app reference
+        if hasattr(parent, 'app'):
+            self.app = parent.app
+        else:
+            self.app = None
+        
         # Theme manager
         if hasattr(parent, 'app') and hasattr(parent.app, 'theme_manager'):
             self.theme_manager = parent.app.theme_manager
@@ -262,7 +268,8 @@ class SettingsDialog(QDialog):
             self.plugin_manager = None
         
         self.setup_ui()
-        self.apply_style()
+        # ✅ REPLACED: Theme-aware styling instead of hardcoded dark
+        self.apply_theme_stylesheet()
         
         # ✅ NOVO: Učitaj sačuvanu preferenciju audio backend-a
         self._load_saved_backend_preference()
@@ -731,7 +738,43 @@ class SettingsDialog(QDialog):
         self.settings_saved.emit(settings)
         self.accept()
     
-    def apply_style(self):
+    def apply_theme_stylesheet(self):
+        """Apply current theme to settings dialog - theme-aware for light/dark themes"""
+        try:
+            from core.themes.base_theme import StyleComponents
+            from core.themes.theme_registry import ThemeRegistry
+            
+            # Get current theme
+            if self.app and hasattr(self.app, 'config'):
+                theme_name = self.app.config.get_theme()
+            else:
+                theme_name = "Dark Modern"
+            
+            theme = ThemeRegistry.get_theme(theme_name)
+            is_dark = ThemeRegistry.is_dark_theme(theme_name)
+            
+            # Dynamic text color based on theme type
+            text_color = "#ffffff" if is_dark else "#2e3440"
+            
+            # Generate theme-aware stylesheet
+            stylesheet = StyleComponents.get_settings_dialog_stylesheet(
+                primary=theme.primary,
+                bg_main=theme.bg_main,
+                bg_secondary=theme.bg_secondary,
+                text_color=text_color,
+                is_dark=is_dark
+            )
+            
+            self.setStyleSheet(stylesheet)
+            print(f"✅ [SettingsDialog] Theme applied: {theme_name} (is_dark={is_dark})")
+        
+        except Exception as e:
+            print(f"⚠️ [SettingsDialog] Could not apply theme: {e}")
+            # Fallback to hardcoded dark theme
+            self.apply_style_fallback()
+    
+    def apply_style_fallback(self):
+        """Fallback styling if theme system fails"""
         """Primeni stil"""
         self.setStyleSheet("""
             QDialog {

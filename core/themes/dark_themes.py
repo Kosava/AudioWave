@@ -109,7 +109,7 @@ class DarkModernTheme(BaseTheme):
             }}
             
             QPushButton#playlistSettingsButton {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                background: qlineargradient(x1:0, y1=0, x2:0, y2=1,
                     stop:0 #a88bfa33, stop:1 #a88bfa1A);
                 border: 1px solid #a88bfa4D;
                 border-radius: 7px;
@@ -121,7 +121,7 @@ class DarkModernTheme(BaseTheme):
             }}
             
             QPushButton#playlistSettingsButton:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                background: qlineargradient(x1:0, y1=0, x2:0, y2=1,
                     stop:0 #a88bfa4D, stop:1 #a88bfa33);
                 border: 1px solid #a88bfa80;
             }}
@@ -368,3 +368,192 @@ class SolarizedDarkTheme(BaseTheme):
             {play_btn}
             {control_btns}
         """
+
+class GalacticCoreTheme(BaseTheme):
+    """GALACTIC CORE - Duboki kosmos sa pulsirajućim jezgrom"""
+    
+    def __init__(self):
+        super().__init__("Galactic Core", "Segoe UI", 13)
+        self.primary = "#8a2be2"      # Ljubičasta
+        self.secondary = "#00ced1"    # Tirkizna
+        self.bg_main = "#0a0a1a"
+        self.bg_secondary = "#1a1a2e"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#e6e6ff", accent="#ff00ff",  # Magenta accent
+            title_color="#9370db", artist_color="#add8e6",
+            label_style="glass"
+        )
+
+
+class MoltenLavaTheme(BaseTheme):
+    """MOLTEN LAVA - Kao da gledate u vulkan"""
+    
+    def __init__(self):
+        super().__init__("Molten Lava", "Arial Black", 13)
+        self.primary = "#ff4500"      # Vatrena narandžasta
+        self.secondary = "#ff0000"    # Crvena
+        self.bg_main = "#1a0000"
+        self.bg_secondary = "#330000"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#ffcc99", accent="#ffff00",  # Žuta accent
+            title_color="#ff5500", artist_color="#ff9966",
+            label_style="minimal"
+        )
+
+
+class CyberNeonTheme(BaseTheme):
+    """CYBER NEON - Tron meets Blade Runner"""
+    
+    def __init__(self):
+        super().__init__("Cyber Neon", "Courier New", 12)
+        self.primary = "#39ff14"      # MATRIX zelena
+        self.secondary = "#ff073a"    # NEON crvena
+        self.bg_main = "#000000"
+        self.bg_secondary = "#0a0a0a"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#00ff9d", accent="#ff00ff",
+            title_color="#00ff9d", artist_color="#39ff14",
+            label_style="clean"
+        )
+
+
+class DeepOceanTheme(BaseTheme):
+    """DEEP OCEAN - Dno okeana sa bioluminescentnim organizmima"""
+    
+    def __init__(self):
+        super().__init__("Deep Ocean", "Verdana", 13)
+        self.primary = "#00f5ff"      # Svijetlo plava
+        self.secondary = "#0066ff"    # Plava
+        self.bg_main = "#000033"
+        self.bg_secondary = "#000066"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#66ffff", accent="#00ff9d",
+            title_color="#00ffff", artist_color="#66ccff",
+            label_style="glass"
+        )
+
+
+class AmethystDreamTheme(BaseTheme):
+    """AMETHYST DREAM - Čarobno ljubičasta sa zlatnim sjajem"""
+    
+    def __init__(self):
+        super().__init__("Amethyst Dream", "Georgia", 14)
+        self.primary = "#9b30ff"      # Ljubičasta
+        self.secondary = "#da70d6"    # Orhideja
+        self.bg_main = "#1a0033"
+        self.bg_secondary = "#330066"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#e6ccff", accent="#ffd700",  # Zlatna accent
+            title_color="#dda0dd", artist_color="#cc99ff",
+            label_style="subtle"
+        )
+
+
+class MidnightObsidianTheme(BaseTheme):
+    """MIDNIGHT OBSIDIAN - Tamniji od tame sa metalnim sjajem"""
+    
+    def __init__(self):
+        super().__init__("Midnight Obsidian", "Arial", 13)
+        self.primary = "#4a00e0"      # Duboka ljubičasta
+        self.secondary = "#8e2de2"    # Svjetlija ljubičasta
+        self.bg_main = "#000000"
+        self.bg_secondary = "#0a0a0a"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#e0e0ff", accent="#00ffea",  # Tirkizni accent
+            title_color="#8e2de2", artist_color="#a45ee5",
+            label_style="glass"
+        )
+
+
+class BloodMoonTheme(BaseTheme):
+    """BLOOD MOON - Krvavo crvena sa mesečevim sjajem"""
+    
+    def __init__(self):
+        super().__init__("Blood Moon", "Impact", 13)
+        self.primary = "#ff0000"      # Čista crvena
+        self.secondary = "#8b0000"    # Tamno crvena
+        self.bg_main = "#1a0000"
+        self.bg_secondary = "#330000"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#ffcccc", accent="#ff9900",  # Narandžasti accent
+            title_color="#ff3333", artist_color="#ff6666",
+            label_style="minimal"
+        )
+
+
+class QuantumVoidTheme(BaseTheme):
+    """QUANTUM VOID - Kvantna praznina sa čestičnim efektima"""
+    
+    def __init__(self):
+        super().__init__("Quantum Void", "Courier New", 12)
+        self.primary = "#00ff88"      # Kvantno zelena
+        self.secondary = "#0088ff"    # Kvantno plava
+        self.bg_main = "#000514"
+        self.bg_secondary = "#001122"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#88ffcc", accent="#ff44aa",  # Magenta accent
+            title_color="#00ffaa", artist_color="#00cc88",
+            label_style="clean"
+        )
+
+
+class DragonFireTheme(BaseTheme):
+    """DRAGON FIRE - Vatra zmaja sa zlatnim plamenom"""
+    
+    def __init__(self):
+        super().__init__("Dragon Fire", "Papyrus", 14)
+        self.primary = "#ff6a00"      # Vatrena narandžasta
+        self.secondary = "#ffd700"    # Zlatna
+        self.bg_main = "#1a0f00"
+        self.bg_secondary = "#331a00"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#ffcc99", accent="#ff3300",  # Crveno-narandžasti accent
+            title_color="#ff9900", artist_color="#ffcc66",
+            label_style="subtle"
+        )
+
+
+class NebulaStormTheme(BaseTheme):
+    """NEBULA STORM - Oluja u maglinoj magli sa munjevima"""
+    
+    def __init__(self):
+        super().__init__("Nebula Storm", "Verdana", 13)
+        self.primary = "#9d4edd"      # Magličasto ljubičasta
+        self.secondary = "#560bad"    # Duboko ljubičasta
+        self.bg_main = "#0a0522"
+        self.bg_secondary = "#1a0b44"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#d8c3ff", accent="#00f5d4",  # Tirkizni accent
+            title_color="#c77dff", artist_color="#e0aaff",
+            label_style="glass"
+        )

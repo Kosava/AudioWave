@@ -80,7 +80,7 @@ class PlaylistManager(QObject):
         if self.debug_mode:
             self.debug_timer.start(30000)  # Svakih 30 sekundi
         
-        # Učitaj playliste iz fajla
+        # Učitaj playliste iz fajla
         print(f"📋 Loading playlists from file...")
         self.load_playlists()
         
@@ -156,7 +156,7 @@ class PlaylistManager(QObject):
         print("=" * 40)
     
     def load_playlists(self):
-        """Učitaj playliste iz JSON fajla"""
+        """Učitaj playliste iz JSON fajla"""
         start_time = time.time()
         
         playlist_file = Path.home() / ".config" / "traywave" / "playlists.json"
@@ -196,7 +196,7 @@ class PlaylistManager(QObject):
         QTimer.singleShot(500, lambda: self.current_playlist_changed.emit())
     
     def save_playlists(self):
-        """Sačuvaj playliste u JSON fajl"""
+        """Sačuvaj playliste u JSON fajl"""
         playlist_file = Path.home() / ".config" / "traywave" / "playlists.json"
         playlist_file.parent.mkdir(parents=True, exist_ok=True)
         
@@ -330,7 +330,7 @@ class PlaylistManager(QObject):
             if current_time - cached_time < 5:  # Cache 5 sekundi
                 return cached_value
         
-        # Ako nema u cache-u, izračunaj
+        # Ako nema u cache-u, izračunaj
         total_duration, unknown_count = self.get_total_duration(name)
         
         if unknown_count > 0:
@@ -534,7 +534,7 @@ class PlaylistManager(QObject):
         return False
     
     def clear_current_playlist(self):
-        """Očisti trenutnu playlistu"""
+        """Očisti trenutnu playlistu"""
         if self.current_playlist_name in self.playlists:
             self.playlists[self.current_playlist_name] = []
             self.current_playlist = []
@@ -551,7 +551,7 @@ class PlaylistManager(QObject):
         return False
     
     def clear_playlist(self, playlist_name: str):
-        """Očisti određenu playlistu"""
+        """Očisti određenu playlistu"""
         if playlist_name in self.playlists:
             self.playlists[playlist_name] = []
             
@@ -592,17 +592,18 @@ class PlaylistManager(QObject):
         except ValueError:
             return -1
     
-    def next(self) -> Optional[str]:
-        """Idi na sledeću pesmu - SA DEBOUNCE ZAŠTITOM"""
+    def next(self, force: bool = False) -> Optional[str]:
+        """Idi na sledeću pesmu - SA DEBOUNCE ZAŠTITOM I FORCE PARAMETROM"""
         import time
         
-        # ✅ DODAJ DEBOUNCE:
-        current_time = time.time()
-        if current_time - self._last_next_time < 0.5:  # 500ms
-            print(f"⚠️ [PlaylistManager] next() called too quickly ({current_time - self._last_next_time:.3f}s), ignoring")
-            return None
+        # ✅ Omogući force za auto-play (ignoriši debounce)
+        if not force:
+            current_time = time.time()
+            if current_time - self._last_next_time < 0.5:  # 500ms debounce za normalne pozive
+                print(f"⚠️ [PlaylistManager] next() called too quickly ({current_time - self._last_next_time:.3f}s), ignoring")
+                return None
         
-        self._last_next_time = current_time
+        self._last_next_time = time.time()
         
         if not self.current_playlist:
             return None
@@ -615,18 +616,18 @@ class PlaylistManager(QObject):
                     new_index = random.randint(0, len(self.current_playlist) - 1)
                 self.current_index = new_index
             else:
-                pass
+                pass  # Ostani na istoj ako je samo jedna pesma
         else:
             # Normal mode
             if self.repeat == "one":
-                pass
+                pass  # Ostani na istoj pesmi
             elif self.current_index < len(self.current_playlist) - 1:
                 self.current_index += 1
             else:
                 if self.repeat == "all":
                     self.current_index = 0
                 else:
-                    return None
+                    return None  # Kraj playliste
         
         self.current_index_changed.emit(self.current_index)
         return self.get_current_file()
@@ -680,7 +681,7 @@ class PlaylistManager(QObject):
     # ========== BACKGROUND LOADING ==========
     
     def start_background_loading(self):
-        """Pokreni background thread za učitavanje duration-a - OPTIMIZOVANO"""
+        """Pokreni background thread za učitavanje duration-a - OPTIMIZOVANO"""
         if self.background_loading or not self.current_playlist:
             return
         
@@ -690,7 +691,7 @@ class PlaylistManager(QObject):
             db_entries = cache_stats['database_entries']
             current_count = len(self.current_playlist)
             
-            # Ako već imamo preko 80% fajlova u cache-u, preskoči
+            # Ako već imamo preko 80% fajlova u cache-u, preskoči
             if current_count > 0 and db_entries > current_count * 0.8:
                 if self.debug_mode:
                     print(f"🎵 Skipping background loading - {db_entries:,}/{current_count:,} already cached ({db_entries/current_count*100:.1f}%)")
@@ -772,7 +773,7 @@ class PlaylistManager(QObject):
         if not filepaths or not hasattr(self, 'duration_cache') or self.stop_loading.is_set():
             return
         
-        # Ograniči na 50 fajlova odjednom
+        # Ograniči na 50 fajlova odjednom
         if len(filepaths) > 50:
             filepaths = filepaths[:50]
         
@@ -840,7 +841,7 @@ class PlaylistManager(QObject):
         }
     
     def cleanup_old_cache(self):
-        """Očisti stari cache"""
+        """Očisti stari cache"""
         if self.debug_mode:
             print(f"🧹 Starting cache cleanup...")
         

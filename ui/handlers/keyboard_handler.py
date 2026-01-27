@@ -32,11 +32,17 @@ class KeyboardHandler(QObject):
         super().__init__()
         self.window = window
         
-        # Plugin manager
+        # Plugin manager - koristimo ga samo za proveru statusa
         if PLUGIN_MANAGER_AVAILABLE:
-            self.plugin_manager = get_plugin_manager()
+            try:
+                self.plugin_manager = get_plugin_manager()
+                print("✅ PluginManager initialized")
+            except Exception as e:
+                print(f"❌ Failed to get PluginManager: {e}")
+                self.plugin_manager = None
         else:
             self.plugin_manager = None
+            print("⚠️ PluginManager not available")
         
         print("⌨️ KeyboardHandler initialized")
     
@@ -297,53 +303,89 @@ class KeyboardHandler(QObject):
     
     def _show_equalizer(self):
         """Show Equalizer dialog (F3)"""
+        print(f"🎛️ F3 pressed - Equalizer shortcut triggered")
+        
+        # Proveri da li je plugin omogućen (ako je plugin manager dostupan)
         if self.plugin_manager:
-            if self.plugin_manager.is_enabled("equalizer"):
-                engine = self._get_engine()
-                self.plugin_manager.show_plugin_dialog(
-                    "equalizer", self.window, engine=engine
-                )
-            else:
+            if not self.plugin_manager.is_enabled("equalizer"):
                 self._show_message("⚠️ Equalizer plugin is disabled. Enable it in Settings → Plugins")
-        else:
-            # Fallback - pokušaj direktan import
+                return
+        
+        # Direktan poziv - zaobilazimo plugin manager jer šalje extra argumente
+        try:
+            from plugins.equalizer.equalizer_plugin import EqualizerDialog
+            engine = self._get_engine()
+            
+            # Pozovi dijalog sa tačno onim argumentima koje očekuje
+            dialog = EqualizerDialog(self.window, engine=engine)
+            dialog.exec()
+            print("✅ Equalizer opened successfully")
+        except ImportError as e:
+            print(f"❌ Equalizer plugin not found: {e}")
+            self._show_message("Equalizer plugin not available")
+        except TypeError as e:
+            # Ako EqualizerDialog ne prihvata engine argument, pokušaj bez njega
+            print(f"⚠️ EqualizerDialog TypeError: {e}. Trying without engine...")
             try:
                 from plugins.equalizer.equalizer_plugin import EqualizerDialog
-                engine = self._get_engine()
-                dialog = EqualizerDialog(self.window, engine=engine)
+                dialog = EqualizerDialog(self.window)
                 dialog.exec()
-            except ImportError:
-                self._show_message("Equalizer plugin not available")
+                print("✅ Equalizer opened without engine argument")
+            except Exception as e2:
+                print(f"❌ Error opening equalizer: {e2}")
+                self._show_message(f"Error opening equalizer: {str(e2)}")
+        except Exception as e:
+            print(f"❌ Error opening equalizer: {e}")
+            self._show_message(f"Error opening equalizer: {str(e)}")
     
     def _show_lyrics(self):
         """Show Lyrics dialog (F4)"""
+        print(f"🎵 F4 pressed - Lyrics shortcut triggered")
+        
+        # Proveri da li je plugin omogućen (ako je plugin manager dostupan)
         if self.plugin_manager:
-            if self.plugin_manager.is_enabled("lyrics"):
-                # Pokušaj dobiti trenutnu pesmu
-                artist = ""
-                title = ""
-                
-                engine = self._get_engine()
-                if engine and hasattr(engine, 'current_metadata'):
-                    metadata = engine.current_metadata
-                    if metadata:
-                        artist = metadata.get('artist', '')
-                        title = metadata.get('title', '')
-                
-                self.plugin_manager.show_plugin_dialog(
-                    "lyrics", self.window, 
-                    artist=artist, title=title
-                )
-            else:
+            if not self.plugin_manager.is_enabled("lyrics"):
                 self._show_message("⚠️ Lyrics plugin is disabled. Enable it in Settings → Plugins")
-        else:
-            # Fallback - pokušaj direktan import
+                return
+        
+        # Direktan poziv - zaobilazimo plugin manager jer šalje extra argumente
+        try:
+            from plugins.lyrics.lyrics_plugin import LyricsDialog
+            
+            # Dobij metapodatke za trenutnu pesmu (ako postoji)
+            artist = ""
+            title = ""
+            
+            engine = self._get_engine()
+            if engine and hasattr(engine, 'current_metadata'):
+                metadata = engine.current_metadata
+                if metadata:
+                    artist = metadata.get('artist', '')
+                    title = metadata.get('title', '')
+            
+            print(f"🔍 Searching lyrics for: {artist} - {title}")
+            
+            # Pozovi dijalog sa minimalnim argumentima
+            dialog = LyricsDialog(self.window, artist=artist, title=title)
+            dialog.exec()
+            print("✅ Lyrics opened successfully")
+        except ImportError as e:
+            print(f"❌ Lyrics plugin not found: {e}")
+            self._show_message("Lyrics plugin not available")
+        except TypeError as e:
+            # Ako LyricsDialog ne prihvata artist/title, pokušaj bez njih
+            print(f"⚠️ LyricsDialog TypeError: {e}. Trying without artist/title...")
             try:
                 from plugins.lyrics.lyrics_plugin import LyricsDialog
                 dialog = LyricsDialog(self.window)
                 dialog.exec()
-            except ImportError:
-                self._show_message("Lyrics plugin not available")
+                print("✅ Lyrics opened without artist/title arguments")
+            except Exception as e2:
+                print(f"❌ Error opening lyrics: {e2}")
+                self._show_message(f"Error opening lyrics: {str(e2)}")
+        except Exception as e:
+            print(f"❌ Error opening lyrics: {e}")
+            self._show_message(f"Error opening lyrics: {str(e)}")
     
     def _show_plugins_settings(self):
         """Show Plugins tab in Settings (Ctrl+P)"""

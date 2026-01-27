@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Player Window - Sa podrškom za multiple stilove i teme
+Player Window - Sa podrškom za multiple stilove i teme + THEME + STYLE PERSISTENCE
 ui/windows/player_window.py
 """
 
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QStackedWidget
-from PyQt6.QtCore import Qt, pyqtSignal, QSize
+from PyQt6.QtCore import Qt, pyqtSignal, QSize, QTimer
 from PyQt6.QtGui import QIcon
 
 from ui.widgets.player_styles import PlayerStyleFactory, ThemeColors, BasePlayerStyle
@@ -16,13 +16,15 @@ try:
     SVG_ICONS_AVAILABLE = True
 except ImportError:
     SVG_ICONS_AVAILABLE = False
-    print('⚠️ SVG Icon Manager not available for PlayerWindow')
+    print('⚠️ SVG Icon Manager not available for PlayerWindow')
 
 
 class PlayerWindow(QWidget):
     """
-    Player window sa podrškom za različite vizualne stilove.
+    Player window sa podrškom za različite vizualne stilove.
     Stilovi se automatski prilagođavaju trenutnoj temi.
+    ✅ Player style se čuva u config!
+    ✅ Theme se učitava pri startup-u!
     """
     
     play_clicked = pyqtSignal()
@@ -37,7 +39,17 @@ class PlayerWindow(QWidget):
         super().__init__()
         self.app = app
         self.is_playing = False
-        self.player_style = "Modern"
+        
+        # ✅ Load saved player style from config
+        self.config = None
+        if hasattr(app, 'config'):
+            self.config = app.config
+            saved_style = self.config.get_player_style()
+            self.player_style = saved_style
+            print(f"🎨 Loaded player style: {saved_style}")
+        else:
+            self.player_style = "Modern"
+            print("⚠️ No config found, using default style: Modern")
         
         self.position = 0
         self.duration = 1000
@@ -47,10 +59,42 @@ class PlayerWindow(QWidget):
         
         self.styles = {}
         self.current_style_widget = None
-        self.theme_colors = ThemeColors()
+        
+        # ✅ Load theme colors from saved theme
+        self.theme_colors = self._load_saved_theme_colors()
         
         self.setup_ui()
-        print("🎨 Player Window - Multi-Style + Theme Compatible")
+        
+        # ✅ Apply saved theme after UI is ready
+        QTimer.singleShot(50, self._apply_saved_theme)
+        
+        print("🎨 Player Window - Multi-Style + Theme Compatible + Style Persistence")
+    
+    def _load_saved_theme_colors(self):
+        """Load theme colors from saved theme"""
+        try:
+            if self.config:
+                saved_theme_name = self.config.get_theme()
+                print(f"🎨 [PlayerWindow] Loading theme colors for: {saved_theme_name}")
+                
+                from core.themes.theme_registry import ThemeRegistry
+                theme = ThemeRegistry.get_theme(saved_theme_name)
+                return ThemeColors.from_theme(theme)
+        except Exception as e:
+            print(f"⚠️ [PlayerWindow] Could not load saved theme colors: {e}")
+        
+        # Fallback to default
+        return ThemeColors()
+    
+    def _apply_saved_theme(self):
+        """Apply saved theme to all styles after initialization"""
+        try:
+            if self.config:
+                saved_theme_name = self.config.get_theme()
+                print(f"🎨 [PlayerWindow] Applying saved theme: {saved_theme_name}")
+                self.apply_theme(saved_theme_name)
+        except Exception as e:
+            print(f"⚠️ [PlayerWindow] Could not apply saved theme: {e}")
     
     def setup_ui(self):
         main_layout = QVBoxLayout(self)
@@ -65,9 +109,16 @@ class PlayerWindow(QWidget):
             self.styles[style_name] = style_widget
             self.style_stack.addWidget(style_widget)
         
-        self.current_style_widget = self.styles.get("Modern")
+        # ✅ Load saved style (ili default)
+        self.current_style_widget = self.styles.get(self.player_style)
+        if not self.current_style_widget:
+            print(f"⚠️ Style '{self.player_style}' not found, using Modern")
+            self.player_style = "Modern"
+            self.current_style_widget = self.styles.get("Modern")
+        
         if self.current_style_widget:
             self.style_stack.setCurrentWidget(self.current_style_widget)
+            print(f"✅ Applied player style: {self.player_style}")
         
         main_layout.addWidget(self.style_stack)
         
@@ -92,20 +143,32 @@ class PlayerWindow(QWidget):
             style.set_volume(value)
     
     def set_player_style(self, style_name: str):
-        """Promeni vizualni stil plejera."""
+        """
+        Promeni vizualni stil plejera.
+        ✅ Čuva u config!
+        """
         if style_name not in self.styles:
-            print(f"⚠ Unknown style: {style_name}, using Modern")
+            print(f"⚠️ Unknown style: {style_name}, using Modern")
             style_name = "Modern"
         
         self.player_style = style_name
         self.current_style_widget = self.styles[style_name]
         self.style_stack.setCurrentWidget(self.current_style_widget)
         self._sync_state_to_current_style()
+        
+        # ✅ Save to config
+        if self.config:
+            self.config.set_player_style(style_name)
+            print(f"💾 Player style saved: {style_name}")
+        
         print(f"🎨 PlayerWindow style changed to: {style_name}")
     
     def apply_theme(self, theme_name: str):
-        """Primeni boje iz teme na sve stilove."""
-        print(f"ðŸŽ¨ PlayerWindow applying theme: {theme_name}")
+        """
+        Primeni boje iz teme na sve stilove.
+        ✅ Ažurirano da zapravo primeni temu!
+        """
+        print(f"🎨 [PlayerWindow] Applying theme: {theme_name}")
         
         try:
             from core.themes.theme_registry import ThemeRegistry
@@ -115,15 +178,16 @@ class PlayerWindow(QWidget):
             for style in self.styles.values():
                 style.set_theme_colors(self.theme_colors)
             
-            print(f"âœ… Theme colors applied to all styles")
+            print(f"✅ [PlayerWindow] Theme '{theme_name}' applied to all player styles")
         except Exception as e:
-            print(f"⚠ Could not apply theme colors: {e}")
+            print(f"⚠️ [PlayerWindow] Could not apply theme colors: {e}")
     
     def set_theme_colors(self, theme_colors: ThemeColors):
         """Direktno postavi boje (koristi se iz UnifiedPlayerWindow)."""
         self.theme_colors = theme_colors
         for style in self.styles.values():
             style.set_theme_colors(theme_colors)
+        print(f"✅ [PlayerWindow] Theme colors updated")
     
     def _sync_state_to_current_style(self):
         if self.current_style_widget:
@@ -194,7 +258,7 @@ class PlayerWindow(QWidget):
         return self.volume
     
     def toggle_mute(self):
-        """Toggle mute - čuva prethodni volume"""
+        """Toggle mute - čuva prethodni volume"""
         if not hasattr(self, '_last_volume'):
             self._last_volume = 70
         

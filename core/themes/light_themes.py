@@ -1,6 +1,6 @@
 # core/themes/light_themes.py - FIXED: Dodao bg_main i bg_secondary za SVE teme
 
-"""All light theme implementations - 13 VIBRANT THEMES with CLEAN player labels!"""
+"""All light theme implementations - 17 VIBRANT THEMES with CLEAN player labels!"""
 
 from .base_theme import BaseTheme, StyleComponents
 
@@ -223,4 +223,80 @@ class VioletStormTheme(BaseTheme):
             text_color="#581c87", accent="#7c3aed",
             title_color="#6b21a8", artist_color="#7e22ce",
             label_style="minimal"
+        )
+
+
+class NeonPulseTheme(BaseTheme):
+    """NEON PULSE - Svetla ali grmi!"""
+    
+    def __init__(self):
+        super().__init__("Neon Pulse", "Arial", 13)
+        self.primary = "#00ff9d"      # NEON zelena
+        self.secondary = "#00b8ff"    # NEON plava
+        self.bg_main = "#ffffff"
+        self.bg_secondary = "#f0f0f0"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#111111", accent="#ff00aa",  # NEON roza za accent
+            title_color="#ff0066", artist_color="#333333",
+            label_style="glass"  # Glass stil za efekt!
+        )
+
+
+class SunsetGlowTheme(BaseTheme):
+    """SUNSET GLOW - Tople boje zalaska sunca"""
+    
+    def __init__(self):
+        super().__init__("Sunset Glow", "Arial", 13)
+        self.primary = "#ff6b35"      # Narandžasta
+        self.secondary = "#ffa62e"    # Žuta
+        self.bg_main = "#fffaf0"
+        self.bg_secondary = "#ffe8d6"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#5a3e1b", accent="#e63946",  # Crvena za kontrast
+            title_color="#d90429", artist_color="#8d5a2d",
+            label_style="clean"
+        )
+
+
+class ArcticAuroraTheme(BaseTheme):
+    """ARCTIC AURORA - Polarna svetlost u ledenoj pustinji"""
+    
+    def __init__(self):
+        super().__init__("Arctic Aurora", "Verdana", 13)
+        self.primary = "#00e0ff"      # Ledeno plava
+        self.secondary = "#00ffaa"    # Ledeno zelena
+        self.bg_main = "#ffffff"
+        self.bg_secondary = "#f0f8ff"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#003366", accent="#ff66cc",  # Magenta accent
+            title_color="#0066cc", artist_color="#0099cc",
+            label_style="glass"
+        )
+
+
+class ChampagneSparkleTheme(BaseTheme):
+    """CHAMPAGNE SPARKLE - Šampanjac sa zlatnim mjehurićima"""
+    
+    def __init__(self):
+        super().__init__("Champagne Sparkle", "Georgia", 14)
+        self.primary = "#ffd166"      # Zlatno žuta
+        self.secondary = "#ffb347"    # Narandžasta
+        self.bg_main = "#fffef0"
+        self.bg_secondary = "#fff8e1"
+    
+    def get_stylesheet(self) -> str:
+        return StyleComponents.get_complete_theme(
+            primary=self.primary, secondary=self.secondary, bg=self.bg_main,
+            text_color="#5d4037", accent="#d4af37",  # Zlatni accent
+            title_color="#b8860b", artist_color="#8b7355",
+            label_style="subtle"
         )

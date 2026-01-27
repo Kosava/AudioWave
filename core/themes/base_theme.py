@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# core/themes/base_theme.py - COMPLETE WITH MINIMAL STYLE - FIXED LINE VISIBILITY
+# core/themes/base_theme.py - COMPLETE WITH MINIMAL STYLE - FIXED DROPDOWN
 
 """Base theme class and common style components"""
 
@@ -105,7 +105,7 @@ class StyleComponents:
                     border-radius: 12px;
                     padding: 10px 28px;
                     margin: 6px 12px;
-                }}
+            }}
             """
         
         # ===== CLEAN STYLE =====
@@ -335,7 +335,7 @@ class StyleComponents:
             }}
             
             QPushButton#playlistSettingsButton {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, 
+                background: qlineargradient(x1:0, y1:0, x2:0, y2=1, 
                     stop:0 rgba(255, 255, 255, 0.2), stop:1 rgba(255, 255, 255, 0.05));
                 border: 1px solid {accent};
                 border-radius: 7px;
@@ -349,7 +349,7 @@ class StyleComponents:
     def get_play_button(color1: str, color2: str, border: str) -> str:
         return f"""
             QPushButton#playerPlayButton {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {color1}, stop:1 {color2});
+                background: qlineargradient(x1:0, y1:0, x2:0, y2=1, stop:0 {color1}, stop:1 {color2});
                 border: 3px solid {border};
                 border-radius: 30px;
                 color: white;
@@ -357,7 +357,7 @@ class StyleComponents:
                 font-weight: bold;
             }}
             QPushButton#playerPlayButton:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 {color1}, stop:1 {color2});
+                background: qlineargradient(x1:0, y1=0, x2:0, y2=1, stop:0 {color1}, stop:1 {color2});
                 opacity: 0.9;
             }}
         """
@@ -369,7 +369,7 @@ class StyleComponents:
             QPushButton#playerNextButton,
             QPushButton#playerStopButton,
             QPushButton#playerPlaylistButton {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                background: qlineargradient(x1:0, y1=0, x2:0, y2=1,
                     stop:0 rgba(255, 255, 255, 0.25), stop:1 rgba(255, 255, 255, 0.15));
                 border: 2px solid {border_color};
                 border-radius: 22px;
@@ -381,7 +381,7 @@ class StyleComponents:
             QPushButton#playerNextButton:hover,
             QPushButton#playerStopButton:hover,
             QPushButton#playerPlaylistButton:hover {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                background: qlineargradient(x1:0, y1=0, x2:0, y2=1,
                     stop:0 rgba(255, 255, 255, 0.4), stop:1 rgba(255, 255, 255, 0.25));
             }}
         """
@@ -418,9 +418,307 @@ class StyleComponents:
         """
     
     @staticmethod
-    def get_list_widget(bg_color: str, border_color: str, selected_color: str, text_color: str = "white") -> str:
-        return ""
-    
+    def get_settings_dialog_stylesheet(primary: str, bg_main: str, bg_secondary: str, text_color: str, is_dark: bool = True) -> str:
+        """Generate settings dialog stylesheet - theme-aware with FIXED WHITE DROPDOWN"""
+        # NEZAVISNO OD TEME - dropdown UVJEK bijela pozadina, crni tekst
+        DROPDOWN_BG = "#ffffff"      # UVJEK bijela
+        DROPDOWN_TEXT = "#333333"    # UVJEK tamno siva
+        DROPDOWN_BORDER = "#cccccc"
+        
+        if is_dark:
+            border_color = "#555"
+            disabled_color = "#888"
+        else:
+            border_color = "#ccc"
+            disabled_color = "#999"
+        
+        return f"""
+            /* Dialog */
+            QDialog {{
+                background-color: {bg_main}; 
+                color: {text_color}; 
+                font-family: 'Arial', sans-serif;
+                font-size: 13px;
+            }}
+            
+            /* Tab widget */
+            QTabWidget::pane {{
+                background-color: {bg_main}; 
+                border: 1px solid {border_color}; 
+                border-radius: 8px;
+                padding: 10px;
+            }}
+            
+            QTabBar::tab {{
+                background-color: {bg_secondary}; 
+                color: {disabled_color}; 
+                padding: 10px 20px; 
+                border-top-left-radius: 8px; 
+                border-top-right-radius: 8px; 
+                margin-right: 2px;
+                border: 1px solid {border_color};
+                border-bottom: none;
+            }}
+            
+            QTabBar::tab:selected {{
+                background-color: {primary}; 
+                color: white; 
+                font-weight: bold;
+            }}
+            
+            QTabBar::tab:hover:!selected {{
+                background-color: rgba({primary.replace('#', '')}, 0.2);
+            }}
+            
+            /* Labels */
+            QLabel {{
+                color: {text_color}; 
+                background: transparent;
+            }}
+            
+            /* ComboBox - MAIN */
+            QComboBox {{
+                background-color: {bg_secondary}; 
+                color: {text_color}; 
+                border: 1px solid {border_color}; 
+                border-radius: 6px; 
+                padding: 8px 12px;
+                min-width: 200px;
+            }}
+            
+            QComboBox:hover {{
+                border-color: {primary};
+            }}
+            
+            QComboBox:focus {{
+                border-color: {primary};
+                border-width: 2px;
+            }}
+            
+            QComboBox::drop-down {{
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 24px;
+                border-left: 1px solid {border_color};
+                border-top-right-radius: 6px;
+                border-bottom-right-radius: 6px;
+                background-color: {primary};
+            }}
+            
+            QComboBox::down-arrow {{
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 7px solid white;
+                width: 0;
+                height: 0;
+            }}
+            
+            /* ComboBox Dropdown - FIXED: UVJEK bijela pozadina, crni tekst */
+            QComboBox QAbstractItemView {{
+                background-color: {DROPDOWN_BG};
+                color: {DROPDOWN_TEXT};
+                border: 1px solid {DROPDOWN_BORDER};
+                border-radius: 6px;
+                margin: 0px;
+                padding: 4px;
+                selection-background-color: {primary};
+                selection-color: white;
+            }}
+            
+            QComboBox QAbstractItemView::item {{
+                padding: 8px 12px;
+                border-radius: 4px;
+                margin: 1px 0;
+            }}
+            
+            QComboBox QAbstractItemView::item:hover {{
+                background-color: rgba({primary.replace('#', '')}, 0.1);
+            }}
+            
+            QComboBox QAbstractItemView::item:selected {{
+                background-color: {primary};
+                color: white;
+                font-weight: bold;
+            }}
+            
+            /* Buttons */
+            QPushButton {{
+                background-color: {primary}; 
+                color: white; 
+                border: none; 
+                border-radius: 6px; 
+                padding: 10px 20px; 
+                font-weight: bold;
+                min-width: 100px;
+            }}
+            
+            QPushButton:hover {{
+                background-color: rgba({primary.replace('#', '')}, 0.9);
+            }}
+            
+            QPushButton:pressed {{
+                background-color: rgba({primary.replace('#', '')}, 0.7);
+            }}
+            
+            /* Checkboxes */
+            QCheckBox {{
+                color: {text_color}; 
+                spacing: 8px;
+            }}
+            
+            QCheckBox::indicator {{
+                width: 18px; 
+                height: 18px; 
+                border: 2px solid {border_color}; 
+                border-radius: 4px; 
+                background-color: {bg_secondary};
+            }}
+            
+            QCheckBox::indicator:checked {{
+                background-color: {primary}; 
+                border-color: {primary};
+                image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="white" d="M10.28 3.28L4.5 9.06 1.72 6.28 1 7l3.5 3.5 6.5-6.5z"/></svg>');
+            }}
+            
+            QCheckBox::indicator:checked:hover {{
+                background-color: rgba({primary.replace('#', '')}, 0.9);
+            }}
+            
+            /* Sliders */
+            QSlider::groove:horizontal {{
+                background: {bg_secondary}; 
+                height: 6px; 
+                border-radius: 3px;
+                border: 1px solid {border_color};
+            }}
+            
+            QSlider::handle:horizontal {{
+                background: {primary}; 
+                width: 16px; 
+                height: 16px; 
+                margin: -5px 0; 
+                border-radius: 8px; 
+                border: 2px solid white;
+            }}
+            
+            QSlider::handle:horizontal:hover {{
+                background: rgba({primary.replace('#', '')}, 0.9); 
+                width: 18px; 
+                height: 18px; 
+                margin: -6px 0; 
+                border-radius: 9px;
+            }}
+            
+            QSlider::sub-page:horizontal {{
+                background: {primary}; 
+                border-radius: 3px;
+            }}
+            
+            /* Group boxes */
+            QGroupBox {{
+                border: 1px solid {border_color}; 
+                border-radius: 8px; 
+                font-weight: bold; 
+                color: {text_color};
+                margin-top: 12px;
+                padding-top: 20px;
+            }}
+            
+            QGroupBox::title {{
+                subcontrol-origin: margin;
+                subcontrol-position: top left;
+                left: 10px;
+                padding: 4px 12px;
+                background-color: {primary};
+                color: white;
+                border-radius: 4px;
+            }}
+            
+            /* Scrollbars */
+            QScrollBar:vertical {{
+                background: {bg_secondary}; 
+                width: 12px; 
+                border-radius: 6px; 
+                border: 1px solid {border_color};
+            }}
+            
+            QScrollBar::handle:vertical {{
+                background: {primary}; 
+                border-radius: 6px; 
+                min-height: 30px;
+            }}
+            
+            QScrollBar::handle:vertical:hover {{
+                background: rgba({primary.replace('#', '')}, 0.9);
+            }}
+            
+            /* Plugin cards */
+            QFrame#pluginCard {{
+                background-color: rgba({primary.replace('#', '')}, 0.1); 
+                border: 1px solid rgba({primary.replace('#', '')}, 0.3);
+                border-radius: 8px; 
+            }}
+            
+            QFrame#pluginCard:hover {{
+                background-color: rgba({primary.replace('#', '')}, 0.15); 
+                border-color: rgba({primary.replace('#', '')}, 0.5);
+            }}
+            
+            /* Separator lines */
+            QFrame[frameShape="4"] {{
+                background-color: {border_color}; 
+                max-height: 1px;
+            }}
+        """
     @staticmethod
-    def get_menu(bg_color: str, border_color: str, selected_color: str) -> str:
-        return ""
+    def get_settings_dialog_stylesheet(primary: str, bg_main: str, bg_secondary: str, 
+                                       text_color: str, is_dark: bool = True) -> str:
+        """Generate settings dialog stylesheet - FIXED for light themes!"""
+        
+        if is_dark:
+            border_color = "#555"
+            disabled_color = "#888"
+            hover_bg = "#2a2a4a"
+            selection_text = "white"
+        else:
+            border_color = "#ccc"
+            disabled_color = "#666"
+            hover_bg = "rgba(0, 0, 0, 0.05)"
+            selection_text = "white"
+        
+        return f"""
+            QDialog {{ background-color: {bg_main}; color: {text_color}; }}
+            QTabWidget::pane {{ background-color: {bg_main}; border: 1px solid {border_color}; border-radius: 8px; }}
+            QTabBar::tab {{ background-color: {bg_secondary}; color: {disabled_color}; padding: 10px 20px; border-top-left-radius: 8px; border-top-right-radius: 8px; }}
+            QTabBar::tab:selected {{ background-color: {bg_secondary}; color: {text_color}; font-weight: bold; }}
+            QTabBar::tab:hover {{ background-color: {hover_bg}; }}
+            QLabel {{ color: {text_color}; background: transparent; }}
+            QComboBox {{ background-color: {bg_secondary}; color: {text_color}; border: 1px solid {border_color}; border-radius: 6px; padding: 8px 12px; min-width: 150px; }}
+            QComboBox:hover {{ border-color: {primary}; background-color: {hover_bg}; }}
+            QComboBox::drop-down {{ border: none; width: 30px; }}
+            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid {text_color}; margin-right: 10px; }}
+            QComboBox QAbstractItemView {{ background-color: {bg_secondary}; color: {text_color}; border: 1px solid {border_color}; selection-background-color: {primary}; selection-color: {selection_text}; outline: none; }}
+            QPushButton {{ background-color: {primary}; color: white; border: none; border-radius: 6px; padding: 10px 20px; font-weight: bold; }}
+            QPushButton:hover {{ background-color: {primary}DD; }}
+            QPushButton:pressed {{ background-color: {primary}AA; }}
+            QPushButton:disabled {{ background-color: {disabled_color}; color: #999; }}
+            QCheckBox {{ color: {text_color}; spacing: 8px; }}
+            QCheckBox::indicator {{ width: 20px; height: 20px; border: 2px solid {border_color}; border-radius: 4px; background-color: {bg_secondary}; }}
+            QCheckBox::indicator:checked {{ background-color: {primary}; border-color: {primary}; }}
+            QCheckBox::indicator:hover {{ border-color: {primary}; }}
+            QSlider::groove:horizontal {{ background: {bg_secondary}; height: 6px; border-radius: 3px; }}
+            QSlider::handle:horizontal {{ background: {primary}; width: 16px; height: 16px; margin: -5px 0; border-radius: 8px; }}
+            QSlider::handle:horizontal:hover {{ background: {primary}DD; }}
+            QSlider::sub-page:horizontal {{ background: {primary}; border-radius: 3px; }}
+            QGroupBox {{ border: 1px solid {border_color}; border-radius: 8px; margin-top: 12px; padding-top: 12px; font-weight: bold; color: {text_color}; }}
+            QGroupBox::title {{ subcontrol-origin: margin; subcontrol-position: top left; padding: 4px 8px; background-color: {primary}; color: white; border-radius: 4px; }}
+            QScrollArea {{ background: transparent; border: none; }}
+            QScrollBar:vertical {{ background: {bg_secondary}; width: 12px; border-radius: 6px; }}
+            QScrollBar::handle:vertical {{ background: {primary}; border-radius: 6px; min-height: 30px; }}
+            QScrollBar::handle:vertical:hover {{ background: {primary}DD; }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
+            QFrame {{ background: transparent; }}
+            QFrame[frameShape="4"] {{ background-color: {border_color}; max-height: 1px; }}
+            QFrame[frameShape="5"] {{ background-color: {border_color}; max-width: 1px; }}
+        """
