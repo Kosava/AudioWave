@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # ui/panels/playlist_panel.py
-# KOORDINATOR - Glavni playlist panel koji integriÅ¡e sve module
+# KOORDINATOR - Glavni playlist panel koji integriše sve module
 
 import json
 import time
@@ -26,7 +26,7 @@ try:
     SVG_ICONS_AVAILABLE = True
 except ImportError:
     SVG_ICONS_AVAILABLE = False
-    print('⚠️ SVG Icon Manager not available, using text fallback')
+    print('Ã¢šÂ Ã¯Â¸Â SVG Icon Manager not available, using text fallback')
 
 # Import audio utils
 try:
@@ -34,7 +34,7 @@ try:
     AUDIO_UTILS_AVAILABLE = True
 except ImportError as e:
     AUDIO_UTILS_AVAILABLE = False
-    print(f'⚠️ Audio utils not available: {e}')
+    print(f'Ã¢šÂ Ã¯Â¸Â Audio utils not available: {e}')
 
 # Import MetadataReader
 try:
@@ -42,7 +42,7 @@ try:
     METADATA_READER_AVAILABLE = True
 except ImportError as e:
     METADATA_READER_AVAILABLE = False
-    print(f'⚠️ MetadataReader not available: {e}')
+    print(f'Ã¢šÂ Ã¯Â¸Â MetadataReader not available: {e}')
 
 
 class PlaylistPanel(QWidget):
@@ -93,7 +93,7 @@ class PlaylistPanel(QWidget):
         self._pending_refresh = False
         self._current_highlighted_file = None
         
-        # ✔ Highlight debounce - prevents rapid duplicate highlights
+        # Ã¢Å“â€ Highlight debounce - prevents rapid duplicate highlights
         self._highlight_debounce_timer = QTimer()
         self._highlight_debounce_timer.setSingleShot(True)
         self._highlight_debounce_timer.setInterval(50)  # 50ms debounce
@@ -177,7 +177,7 @@ class PlaylistPanel(QWidget):
             self.delete_playlist_btn.setIcon(icon)
             self.delete_playlist_btn.setIconSize(QSize(20, 20))
         else:
-            self.delete_playlist_btn.setText("Ã—")
+            self.delete_playlist_btn.setText("ÃƒÆ’Ã¢â‚¬â€")
         
         self.settings_btn = QPushButton()
         self.settings_btn.setObjectName("settingsButton")
@@ -189,7 +189,7 @@ class PlaylistPanel(QWidget):
             self.settings_btn.setIcon(icon)
             self.settings_btn.setIconSize(QSize(20, 20))
         else:
-            self.settings_btn.setText("⚙")
+            self.settings_btn.setText("Ã¢šâ„¢")
         
         toolbar_layout.addWidget(self.new_playlist_btn)
         toolbar_layout.addWidget(self.playlist_selector, 1)
@@ -234,6 +234,7 @@ class PlaylistPanel(QWidget):
         add_menu = QMenu(self.add_btn)
         add_menu.addAction("Add Files", self.add_files)
         add_menu.addAction("Add Folder", self.add_folder)
+        add_menu.addAction("Add URL (Stream)", self.add_url)
         self.add_btn.setMenu(add_menu)
         
         self.clear_btn = QPushButton("Clear Playlist")
@@ -243,7 +244,7 @@ class PlaylistPanel(QWidget):
             self.clear_btn.setIcon(icon_clear)
             self.clear_btn.setIconSize(QSize(18, 18))
         else:
-            self.clear_btn.setText("Ã— Clear Playlist")
+            self.clear_btn.setText("ÃƒÆ’Ã¢â‚¬â€ Clear Playlist")
         self.clear_btn.clicked.connect(self.clear_playlist)
         
         self.status_label = QLabel("Ready • 0 tracks • 0:00")
@@ -377,7 +378,7 @@ class PlaylistPanel(QWidget):
         
         if self.playlist_manager:
             self.delegate.clear_cache()
-            # Direktno uÄÂitaj listu umesto poziva refresh_list koji proverava _is_loading
+            # Direktno uÃƒâ€žÃ‚ÂÃƒâ€šÃ‚Âitaj listu umesto poziva refresh_list koji proverava _is_loading
             self._do_refresh_list(self.playlist_manager.current_playlist)
             self.update_status_bar()
             self._metadata_preload_timer.start(1000)
@@ -460,7 +461,7 @@ class PlaylistPanel(QWidget):
         if filepath == self._current_highlighted_file:
             return
         
-        # ✔ Debounce: If called too quickly, schedule for later
+        # Ã¢Å“â€ Debounce: If called too quickly, schedule for later
         current_time = time.time()
         if current_time - self._last_highlight_time < 0.05:  # 50ms
             self._pending_highlight_file = filepath
@@ -547,7 +548,7 @@ class PlaylistPanel(QWidget):
             if 'title' in metadata and metadata['title']:
                 track_name = metadata['title']
             
-            self.show_status_message(f"✔ Tags saved: {track_name}", 3000)
+            self.show_status_message(f"Ã¢Å“â€ Tags saved: {track_name}", 3000)
             
             if hasattr(self.app, 'engine'):
                 if self.app.engine.current_file == filepath:
@@ -571,6 +572,9 @@ class PlaylistPanel(QWidget):
     
     def add_folder(self):
         self.operations_manager.add_folder()
+    
+    def add_url(self):
+        self.operations_manager.add_url()
     
     def clear_playlist(self):
         self.operations_manager.clear_playlist()
@@ -697,7 +701,7 @@ class PlaylistPanel(QWidget):
             self.playlist_selector.setCurrentIndex(index)
             self.delete_playlist_btn.setEnabled(playlist_name != "Default Playlist")
         
-        # KRITIČNO: Osveži listu da prikaže promene (npr. obrisane pesme)
+        # KRITIÃ„Å’NO: OsveÃ…Â¾i listu da prikaÃ…Â¾e promene (npr. obrisane pesme)
         self.load_current_playlist()
 
     def on_current_playlist_changed(self):
@@ -728,7 +732,7 @@ class PlaylistPanel(QWidget):
         return self._current_highlighted_file
     def apply_theme(self, theme_name: str = None):
         """
-        AÅ¾urira ikone prema trenutnoj temi.
+        AÃƒâ€¦Ã‚Â¾urira ikone prema trenutnoj temi.
         Poziva se kada se tema promeni.
         """
         # Detektuj boju iz teme
@@ -744,11 +748,11 @@ class PlaylistPanel(QWidget):
         except:
             pass
         
-        # AÅ¾uriraj sve ikone
+        # AÃƒâ€¦Ã‚Â¾uriraj sve ikone
         self._update_button_icons()
     
     def _update_button_icons(self):
-        """AÅ¾urira ikone na svim dugmadima."""
+        """AÃƒâ€¦Ã‚Â¾urira ikone na svim dugmadima."""
         if not SVG_ICONS_AVAILABLE:
             return
         

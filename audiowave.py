@@ -19,26 +19,27 @@ from PyQt6.QtGui import QPalette, QColor
 from core.config import Config
 from core.playlist import PlaylistManager
 from core.theme_manager import ThemeManager
+from core.url_stream_helper import patch_gstreamer_play_file, is_stream_url
 from ui.windows.unified_player_window import UnifiedPlayerWindow
 
 
 # ========== ENGINE FACTORY ==========
-# Koristi GStreamer ako je dostupan, inače Qt Multimedia
+# Koristi GStreamer ako je dostupan, inaÄe Qt Multimedia
 
 def create_audio_engine():
     """
-    Kreiraj audio engine - preferira GStreamer zbog EQ podrške.
+    Kreiraj audio engine - preferira GStreamer zbog EQ podrÅ¡ke.
     """
-    # Prvo probaj učitati sačuvanu preferenciju
+    # Prvo probaj uÄitati saÄuvanu preferenciju
     try:
         from core.engine_factory import load_engine_preference, create_engine
         preferred = load_engine_preference()
-        print(f"🔧 Preferred engine from settings: {preferred}")
+        print(f"ðŸ”§ Preferred engine from settings: {preferred}")
 
         if preferred == "gstreamer":
             engine = create_engine("gstreamer")
             if engine:
-                print("✅ Using GStreamer engine (with EQ support)")
+                print("âœ… Using GStreamer engine (with EQ support)")
                 return engine
     except ImportError:
         pass
@@ -48,17 +49,17 @@ def create_audio_engine():
         from core.gstreamer_engine import GStreamerEngine, GSTREAMER_AVAILABLE
         if GSTREAMER_AVAILABLE:
             engine = GStreamerEngine()
-            print("🔊 Audio engine initialized with GStreamer (EQ supported)")
+            print("ðŸ”Š Audio engine initialized with GStreamer (EQ supported)")
             return engine
     except ImportError as e:
-        print(f"⚠️ GStreamer not available: {e}")
+        print(f"âš ï¸ GStreamer not available: {e}")
     except Exception as e:
-        print(f"⚠️ GStreamer init failed: {e}")
+        print(f"âš ï¸ GStreamer init failed: {e}")
 
     # Fallback na Qt Multimedia
     from core.engine import AudioEngine
     engine = AudioEngine()
-    print("🔊 Audio engine initialized with Qt Multimedia (no EQ support)")
+    print("ðŸ”Š Audio engine initialized with Qt Multimedia (no EQ support)")
     return engine
 
 
@@ -83,81 +84,90 @@ class AudioWaveApp:
         try:
             self.app.setAttribute(Qt.ApplicationAttribute.AA_EnableHighDpiScaling, True)
             self.app.setAttribute(Qt.ApplicationAttribute.AA_UseHighDpiPixmaps, True)
-            print("🔍 High DPI scaling enabled")
+            print("ðŸ” High DPI scaling enabled")
         except AttributeError:
-            print("⚠️ DPI scaling attributes not available in this Qt version")
+            print("âš ï¸ DPI scaling attributes not available in this Qt version")
 
         # Postavi Fusion style kao osnovni
         available_styles = QStyleFactory.keys()
         if "Fusion" in available_styles:
             self.app.setStyle("Fusion")
-            print(f"🎨 Using Fusion style (available: {available_styles})")
+            print(f"ðŸŽ¨ Using Fusion style (available: {available_styles})")
         else:
-            print(f"⚠️ Fusion style not available, using default (available: {available_styles})")
+            print(f"âš ï¸ Fusion style not available, using default (available: {available_styles})")
 
         # Centralni signali
         self.signals = ApplicationSignals()
 
         # ===== CORE KOMPONENTE =====
-        print("🔧 Initializing core components...")
+        print("ðŸ”§ Initializing core components...")
         
-        # ✅ 1. Config se učitava PRVO (sa load() metodom)
+        # âœ… 1. Config se uÄitava PRVO (sa load() metodom)
         self.config = Config()
-        print(f"📋 Config loaded from: {self.config.get_config_path()}")
+        print(f"ðŸ“‹ Config loaded from: {self.config.get_config_path()}")
         
-        # ✅ 2. Engine
+        # âœ… 2. Engine
         self.engine = create_audio_engine()
         
-        # ✅ 3. Playlist Manager
+        # âœ… 2.1 Patch engine za URL streaming podršku
+        try:
+            from core.gstreamer_engine import GStreamerEngine
+            if isinstance(self.engine, GStreamerEngine):
+                patch_gstreamer_play_file(self.engine)
+                print("âœ… URL streaming support enabled")
+        except Exception as e:
+            print(f"âš ï¸ URL streaming patch failed: {e}")
+        
+        # âœ… 3. Playlist Manager
         self.playlist_manager = PlaylistManager()
 
         # ===== THEME MANAGER SA CONFIG INTEGRATION =====
-        print("🎨 Initializing theme manager...")
+        print("ðŸŽ¨ Initializing theme manager...")
         
-        # ✅ Pass config to ThemeManager
+        # âœ… Pass config to ThemeManager
         self.theme_manager = ThemeManager(self.config)
         
         # Povezi engine sa app
         self.engine.app = self
 
         # ===== MAIN WINDOW =====
-        print("🪟 Creating unified window...")
+        print("ðŸªŸ Creating unified window...")
         self.main_window = UnifiedPlayerWindow(self)
 
         # Atributi za kompatibilnost
         self.window = self.main_window
         self.unified_window = self.main_window
 
-        # Postavi objectName za lakše theming
+        # Postavi objectName za lakÅ¡e theming
         self._setup_object_names()
 
         # ===== LOAD SAVED THEME =====
-        print("🎨 Loading saved theme...")
+        print("ðŸŽ¨ Loading saved theme...")
         saved_theme = self.config.get_theme()
-        print(f"📖 Saved theme: {saved_theme}")
+        print(f"ðŸ“– Saved theme: {saved_theme}")
         
-        # ✅ Apply saved theme (without re-saving)
+        # âœ… Apply saved theme (without re-saving)
         self.theme_manager.load_saved_theme(self.main_window)
         
-        print(f"✅ Applied theme: {self.theme_manager.current_theme}")
+        print(f"âœ… Applied theme: {self.theme_manager.current_theme}")
 
         # Verifikacija teme
-        print("🎨 Theme system verification:")
+        print("ðŸŽ¨ Theme system verification:")
         print(f"   Available themes: {len(self.theme_manager.get_available_themes())} themes")
         print(f"   Current theme: {self.theme_manager.current_theme}")
         print(f"   Is dark: {self.theme_manager.is_dark_theme()}")
 
-        # Učitaj prethodno stanje
+        # UÄitaj prethodno stanje
         self._load_application_state()
 
-        # Poveži signale
+        # PoveÅ¾i signale
         self.setup_connections()
 
-        # Učitaj demo muziku samo ako je prazna playlist
+        # UÄitaj demo muziku samo ako je prazna playlist
         if not self.playlist_manager.current_playlist:
             self.setup_test_music()
 
-        print("✅ Application initialized")
+        print("âœ… Application initialized")
         print("=" * 50)
 
     def _setup_object_names(self):
@@ -165,33 +175,33 @@ class AudioWaveApp:
         try:
             if hasattr(self.main_window, "player_window"):
                 self.main_window.player_window.setObjectName("player_window")
-                print("🎯 Set objectName for player_window")
+                print("ðŸŽ¯ Set objectName for player_window")
             
             if hasattr(self.main_window, "playlist_panel"):
                 self.main_window.playlist_panel.setObjectName("playlist_panel")
-                print("🎯 Set objectName for playlist_panel")
+                print("ðŸŽ¯ Set objectName for playlist_panel")
             
             if hasattr(self.main_window, "title_bar"):
                 self.main_window.title_bar.setObjectName("title_bar")
-                print("🎯 Set objectName for title_bar")
+                print("ðŸŽ¯ Set objectName for title_bar")
             
             if hasattr(self.main_window, "controls_panel"):
                 self.main_window.controls_panel.setObjectName("controls_panel")
-                print("🎯 Set objectName for controls_panel")
+                print("ðŸŽ¯ Set objectName for controls_panel")
                 
         except Exception as e:
-            print(f"⚠️ Error setting object names: {e}")
+            print(f"âš ï¸ Error setting object names: {e}")
 
     def _load_application_state(self):
-        """Učitaj prethodno sačuvano stanje aplikacije"""
+        """UÄitaj prethodno saÄuvano stanje aplikacije"""
         try:
-            # Učitaj volume
+            # UÄitaj volume
             saved_volume = self.config.get_volume()
             if saved_volume is not None:
                 self.engine.set_volume(saved_volume)
-                print(f"🔊 Restored volume: {saved_volume}")
+                print(f"ðŸ”Š Restored volume: {saved_volume}")
             
-            # Učitaj window geometry
+            # UÄitaj window geometry
             geometry = self.config.get_window_geometry()
             if geometry:
                 self.main_window.setGeometry(
@@ -200,38 +210,38 @@ class AudioWaveApp:
                     geometry.get('width', 900),
                     geometry.get('height', 600)
                 )
-                print(f"📐 Restored window geometry: {geometry}")
+                print(f"ðŸ“ Restored window geometry: {geometry}")
             
-            # Učitaj playlist state ako postoji
+            # UÄitaj playlist state ako postoji
             if hasattr(self.playlist_manager, 'load_state'):
                 self.playlist_manager.load_state(self.config)
                 
         except Exception as e:
-            print(f"⚠️ Error loading application state: {e}")
+            print(f"âš ï¸ Error loading application state: {e}")
 
     def setup_connections(self):
-        """Poveži signale između komponenti"""
+        """PoveÅ¾i signale izmeÄ‘u komponenti"""
         try:
             # Engine -> UI (preko unified window)
             self.engine.playback_started.connect(self.on_playback_started)
             self.engine.playback_ended.connect(self.on_playback_ended)  # OVO JE BITNO
             self.engine.error_occurred.connect(self.show_error)
             
-            # OBAVEŠTENJE: position_changed može slati samo position ili (position, duration)
+            # OBAVEÅ TENJE: position_changed moÅ¾e slati samo position ili (position, duration)
             # Prilagodite se na osnovu engine implementacije
             if hasattr(self.engine, 'position_changed'):
                 try:
-                    # Probaj da povežeš oba formata
+                    # Probaj da poveÅ¾eÅ¡ oba formata
                     self.engine.position_changed.connect(self.on_position_changed)
                 except Exception:
-                    # Ako ne radi, probaj alternativni način
+                    # Ako ne radi, probaj alternativni naÄin
                     pass
             
-            # Poveži volume signal ako postoji
+            # PoveÅ¾i volume signal ako postoji
             if hasattr(self.engine, 'volume_changed'):
                 self.engine.volume_changed.connect(self.on_volume_changed)
 
-            # Ako unified window ima kontrolne signale, poveži ih
+            # Ako unified window ima kontrolne signale, poveÅ¾i ih
             if hasattr(self.main_window, "next_clicked"):
                 self.main_window.next_clicked.connect(self.engine.play_next)
 
@@ -241,13 +251,13 @@ class AudioWaveApp:
             if hasattr(self.main_window, "volume_changed"):
                 self.main_window.volume_changed.connect(self.engine.set_volume)
 
-            # Playlist manager signale poveži sa window-om
+            # Playlist manager signale poveÅ¾i sa window-om
             if hasattr(self.playlist_manager, "playlist_changed"):
                 self.playlist_manager.playlist_changed.connect(
                     self.on_playlist_changed
                 )
             
-            # ✅ Theme changed signal
+            # âœ… Theme changed signal
             self.theme_manager.theme_changed.connect(self.on_theme_changed)
             
             # Centralni signali
@@ -256,7 +266,7 @@ class AudioWaveApp:
             self.signals.shutdown_requested.connect(self.shutdown)
 
         except Exception as e:
-            print(f"⚠️ Error setting up connections: {e}")
+            print(f"âš ï¸ Error setting up connections: {e}")
 
     def on_playlist_changed(self):
         """Obrada promene playliste"""
@@ -265,15 +275,15 @@ class AudioWaveApp:
                 count = len(self.playlist_manager.current_playlist)
                 self.main_window.show_message(f"Playlist updated ({count} tracks)")
             
-            # Ažuriraj UI ako postoji playlist panel
+            # AÅ¾uriraj UI ako postoji playlist panel
             if hasattr(self.main_window, 'refresh_playlist_display'):
                 self.main_window.refresh_playlist_display()
                 
         except Exception as e:
-            print(f"⚠️ Error in on_playlist_changed: {e}")
+            print(f"âš ï¸ Error in on_playlist_changed: {e}")
     
     def on_position_changed(self, *args):
-        """Ažuriraj progress bar - podržava različite formate signala"""
+        """AÅ¾uriraj progress bar - podrÅ¾ava razliÄite formate signala"""
         try:
             if len(args) == 1:
                 # Samo position
@@ -284,31 +294,31 @@ class AudioWaveApp:
                 position = args[0]
                 duration = args[1]
             else:
-                print(f"⚠️ Unexpected position_changed signal format: {args}")
+                print(f"âš ï¸ Unexpected position_changed signal format: {args}")
                 return
                 
             if hasattr(self.main_window, 'update_progress'):
                 self.main_window.update_progress(position, duration)
         except Exception as e:
-            print(f"⚠️ Error in on_position_changed: {e}, args: {args}")
+            print(f"âš ï¸ Error in on_position_changed: {e}, args: {args}")
     
     def on_volume_changed(self, volume):
-        """Ažuriraj UI za volume"""
+        """AÅ¾uriraj UI za volume"""
         try:
             if hasattr(self.main_window, 'update_volume_display'):
                 self.main_window.update_volume_display(volume)
         except Exception as e:
-            print(f"⚠️ Error in on_volume_changed: {e}")
+            print(f"âš ï¸ Error in on_volume_changed: {e}")
 
     def on_theme_changed(self, theme_name: str):
         """Called when theme changes"""
-        print(f"🎨 Theme changed to: {theme_name}")
-        print(f"💾 Theme saved to config")
+        print(f"ðŸŽ¨ Theme changed to: {theme_name}")
+        print(f"ðŸ’¾ Theme saved to config")
         
-        # Sačuvaj u config
+        # SaÄuvaj u config
         self.config.set_theme(theme_name)
         
-        # Ažuriraj sve UI komponente
+        # AÅ¾uriraj sve UI komponente
         self._refresh_all_ui_components()
         
         # Objavi poruku
@@ -317,13 +327,13 @@ class AudioWaveApp:
 
     def on_theme_requested(self, theme_name: str):
         """Zahtev za primenu teme iz bilo kog dela aplikacije"""
-        print(f"🎨 Theme apply requested: {theme_name}")
+        print(f"ðŸŽ¨ Theme apply requested: {theme_name}")
         self.theme_manager.apply_theme(theme_name, self.main_window)
 
     def _refresh_all_ui_components(self):
-        """Osveži sve UI komponente nakon promene teme"""
+        """OsveÅ¾i sve UI komponente nakon promene teme"""
         try:
-            # Osveži palette aplikacije
+            # OsveÅ¾i palette aplikacije
             if self.theme_manager.current_theme in ["dark", "midnight", "slate"]:
                 dark_palette = QPalette()
                 dark_palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
@@ -343,7 +353,7 @@ class AudioWaveApp:
             else:
                 self.app.setPalette(self.app.style().standardPalette())
 
-            # Osveži sve widgete
+            # OsveÅ¾i sve widgete
             if hasattr(self.main_window, 'refresh_theme'):
                 self.main_window.refresh_theme()
             
@@ -353,22 +363,22 @@ class AudioWaveApp:
                 if hasattr(widget, 'repaint'):
                     widget.repaint()
             
-            # Process events za odmah ažuriranje
+            # Process events za odmah aÅ¾uriranje
             QApplication.processEvents()
             
-            print("✅ UI components refreshed after theme change")
+            print("âœ… UI components refreshed after theme change")
             
         except Exception as e:
-            print(f"⚠️ Error refreshing UI components: {e}")
+            print(f"âš ï¸ Error refreshing UI components: {e}")
 
     def on_playback_started(self, filepath):
-        """Ažuriraj stanje kada pesma krene"""
+        """AÅ¾uriraj stanje kada pesma krene"""
         try:
             if hasattr(self, "playlist_manager"):
                 if filepath in self.playlist_manager.current_playlist:
                     index = self.playlist_manager.current_playlist.index(filepath)
                     self.playlist_manager.current_index = index
-                    print(f"📋 Playing: {Path(filepath).name}")
+                    print(f"ðŸ“‹ Playing: {Path(filepath).name}")
 
                     # Obavesti unified window
                     if hasattr(self.main_window, "show_message"):
@@ -376,28 +386,28 @@ class AudioWaveApp:
                             f"Playing: {Path(filepath).name}"
                         )
                     
-                    # Ažuriraj playlist display
+                    # AÅ¾uriraj playlist display
                     if hasattr(self.main_window, 'update_current_track'):
                         self.main_window.update_current_track(index)
                         
         except Exception as e:
-            print(f"⚠️ Error in on_playback_started: {e}")
+            print(f"âš ï¸ Error in on_playback_started: {e}")
 
     def on_playback_ended(self):
-        """Obrada završetka pesme"""
+        """Obrada zavrÅ¡etka pesme"""
         try:
-            print("📚 Playback ended (UI notified)")
+            print("ðŸ“š Playback ended (UI notified)")
             # NE pozivaj engine.play_next() ovde!
-            # Engine će sam hendlovati auto-next
+            # Engine Ä‡e sam hendlovati auto-next
         except Exception as e:
-            print(f"⚠️ Error in on_playback_ended: {e}")
+            print(f"âš ï¸ Error in on_playback_ended: {e}")
 
     def show_error(self, error_msg):
-        """Prikaži grešku"""
+        """PrikaÅ¾i greÅ¡ku"""
         try:
             QMessageBox.warning(self.main_window, "AudioWave Error", error_msg)
         except Exception as e:
-            print(f"⚠️ Error showing error message: {e}")
+            print(f"âš ï¸ Error showing error message: {e}")
 
     def setup_test_music(self):
         """Automatsko skeniranje muzike - dodaj demo pesme"""
@@ -416,7 +426,7 @@ class AudioWaveApp:
                 # Uzmi prvih 5 realnih fajlova
                 files_to_add = [str(f) for f in real_files[:5]]
                 self.playlist_manager.add_files(files_to_add)
-                print(f"🎵 Added {len(files_to_add)} real tracks from Music folder")
+                print(f"ðŸŽµ Added {len(files_to_add)} real tracks from Music folder")
             else:
                 # Koristi demo placeholdere
                 demo_files = [
@@ -426,13 +436,13 @@ class AudioWaveApp:
                 ]
                 for demo_file in demo_files:
                     self.playlist_manager.add_files([demo_file])
-                print(f"🎵 Added {len(demo_files)} demo tracks to playlist")
+                print(f"ðŸŽµ Added {len(demo_files)} demo tracks to playlist")
 
         except Exception as e:
-            print(f"⚠️ Error setting up test music: {e}")
+            print(f"âš ï¸ Error setting up test music: {e}")
 
     def add_real_music(self):
-        """Ovu funkciju sada možeš pozivati direktno iz Unified prozora"""
+        """Ovu funkciju sada moÅ¾eÅ¡ pozivati direktno iz Unified prozora"""
         from PyQt6.QtWidgets import QFileDialog
 
         try:
@@ -449,7 +459,7 @@ class AudioWaveApp:
                 if hasattr(self.main_window, "show_message"):
                     self.main_window.show_message(f"Added {len(files)} tracks")
 
-                # Ako nije ništa puštano, pusti prvu
+                # Ako nije niÅ¡ta puÅ¡tano, pusti prvu
                 if len(self.playlist_manager.current_playlist) > 0:
                     if self.engine.current_file is None:
                         self.engine.play_file(
@@ -457,27 +467,27 @@ class AudioWaveApp:
                         )
 
         except Exception as e:
-            print(f"⚠️ Error adding music: {e}")
+            print(f"âš ï¸ Error adding music: {e}")
     
     def save_state_periodically(self):
-        """Periodično čuvanje stanja (može se pozvati iz timera)"""
+        """PeriodiÄno Äuvanje stanja (moÅ¾e se pozvati iz timera)"""
         try:
-            # Sačuvaj trenutni volume
+            # SaÄuvaj trenutni volume
             if hasattr(self.engine, 'volume'):
                 self.config.set_volume(self.engine.volume())
             
-            # Sačuvaj playlist stanje ako postoji metoda
+            # SaÄuvaj playlist stanje ako postoji metoda
             if hasattr(self.playlist_manager, 'save_state'):
                 self.playlist_manager.save_state(self.config)
             
-            print("💾 Periodic state saved")
+            print("ðŸ’¾ Periodic state saved")
             
         except Exception as e:
-            print(f"⚠️ Error in periodic save: {e}")
+            print(f"âš ï¸ Error in periodic save: {e}")
 
     def shutdown(self):
         """Clean shutdown - save state"""
-        print("💾 Saving application state...")
+        print("ðŸ’¾ Saving application state...")
         
         try:
             # Save window geometry
@@ -499,10 +509,10 @@ class AudioWaveApp:
             
             # Final config save
             self.config.save()
-            print("✅ Application state saved")
+            print("âœ… Application state saved")
             
         except Exception as e:
-            print(f"⚠️ Error saving state: {e}")
+            print(f"âš ï¸ Error saving state: {e}")
         
         # DELAYED ENGINE CLEANUP - posle svih drugih cleanup-a
         try:
@@ -512,20 +522,20 @@ class AudioWaveApp:
             pass
 
     def _delayed_engine_cleanup(self):
-        """Cleanup engine sa delay-om da izbegneš segfault"""
+        """Cleanup engine sa delay-om da izbegneÅ¡ segfault"""
         try:
             if hasattr(self, 'engine'):
                 self.engine.cleanup()
-                print("🔧 Engine cleanup completed")
+                print("ðŸ”§ Engine cleanup completed")
         except Exception as e:
-            print(f"⚠️ Error in delayed engine cleanup: {e}")
+            print(f"âš ï¸ Error in delayed engine cleanup: {e}")
 
     def run(self):
         """Pokreni aplikaciju"""
-        print("🎬 Starting main window...")
+        print("ðŸŽ¬ Starting main window...")
         self.main_window.show()
 
-        # Postavi timer za periodično čuvanje stanja
+        # Postavi timer za periodiÄno Äuvanje stanja
         self.save_timer = QTimer()
         self.save_timer.timeout.connect(self.save_state_periodically)
         self.save_timer.start(30000)  # Svakih 30 sekundi
@@ -538,9 +548,9 @@ class AudioWaveApp:
 
 
 def debug_eq_info(player):
-    """Debug info o EQ podršci"""
+    """Debug info o EQ podrÅ¡ci"""
     print("\n" + "=" * 50)
-    print("🎛️ EQ DEBUG INFO")
+    print("ðŸŽ›ï¸ EQ DEBUG INFO")
     print("=" * 50)
 
     engine = player.engine
@@ -561,10 +571,10 @@ def debug_eq_info(player):
         print(f"   EQ element exists: {has_eq_element}")
 
     if is_gstreamer and has_eq:
-        print("\n   ✅ EQ SHOULD WORK!")
+        print("\n   âœ… EQ SHOULD WORK!")
         print("   Otvori EQ sa F3 i testiraj.")
     elif not is_gstreamer:
-        print("\n   ❌ Qt Multimedia - EQ neće raditi!")
+        print("\n   âŒ Qt Multimedia - EQ neÄ‡e raditi!")
         print("   Promeni u ~/.audiowave/audio_settings.json:")
         print('   {"preferred_engine": "gstreamer"}')
 
@@ -574,7 +584,7 @@ def debug_eq_info(player):
 def debug_theme_info(player):
     """Debug info o theme persistence"""
     print("\n" + "=" * 50)
-    print("🎨 THEME PERSISTENCE DEBUG")
+    print("ðŸŽ¨ THEME PERSISTENCE DEBUG")
     print("=" * 50)
     
     print(f"   Config file: {player.config.get_config_path()}")
@@ -591,17 +601,17 @@ def debug_theme_info(player):
         print(f"   - playlist_panel: {player.main_window.playlist_panel.objectName()}")
     
     if player.config.get_theme() == player.theme_manager.current_theme:
-        print("\n   ✅ THEME PERSISTENCE WORKING!")
+        print("\n   âœ… THEME PERSISTENCE WORKING!")
     else:
-        print("\n   ⚠️ Theme mismatch - check integration")
+        print("\n   âš ï¸ Theme mismatch - check integration")
     
     print("=" * 50 + "\n")
 
 
 def debug_app_info(player):
-    """Opšti debug info o aplikaciji"""
+    """OpÅ¡ti debug info o aplikaciji"""
     print("\n" + "=" * 50)
-    print("🔍 APPLICATION DEBUG INFO")
+    print("ðŸ” APPLICATION DEBUG INFO")
     print("=" * 50)
     
     print(f"   Playlist tracks: {len(player.playlist_manager.current_playlist)}")
@@ -632,12 +642,12 @@ def main():
     player = None
     try:
         print("=" * 50)
-        print("🚀 Starting AudioWave...")
+        print("ðŸš€ Starting AudioWave...")
         print("=" * 50)
 
         player = AudioWaveApp()
 
-        # ✅ DEBUG: Prikaži sve info
+        # âœ… DEBUG: PrikaÅ¾i sve info
         debug_eq_info(player)
         debug_theme_info(player)
         debug_app_info(player)
@@ -645,25 +655,25 @@ def main():
         exit_code = player.run()
 
         print("=" * 50)
-        print("👋 Shutting down AudioWave...")
+        print("ðŸ‘‹ Shutting down AudioWave...")
         print("=" * 50)
 
     except KeyboardInterrupt:
-        print("\n🛑 Keyboard interrupt - shutting down...")
+        print("\nðŸ›‘ Keyboard interrupt - shutting down...")
         exit_code = 0
     except Exception as e:
-        print(f"❌ Unhandled exception: {e}")
+        print(f"âŒ Unhandled exception: {e}")
         import traceback
         traceback.print_exc()
         exit_code = 1
     
     finally:
-        # ✅ Save state before shutdown - samo ako player postoji
+        # âœ… Save state before shutdown - samo ako player postoji
         if player:
             try:
                 player.shutdown()
             except Exception as e:
-                print(f"⚠️ Error during player shutdown: {e}")
+                print(f"âš ï¸ Error during player shutdown: {e}")
         
         # Bez posebnog cleanup-a, sada se to radi u shutdown() preko delayed cleanup
         sys.exit(exit_code)

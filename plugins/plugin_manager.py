@@ -55,6 +55,9 @@ class PluginManager(QObject):
     plugin_disabled = pyqtSignal(str)  # plugin_id
     plugins_changed = pyqtSignal()
     
+    # Signal za dodavanje radio stanice u playlist
+    add_radio_to_playlist = pyqtSignal(str, str)  # (naziv, url)
+    
     def __init__(self, config_path: str = None):
         super().__init__()
         
@@ -148,20 +151,31 @@ class PluginManager(QObject):
             dialog_class=None,  # TODO: Implementirati
         ))
         
-        # Sleep Timer plugin (placeholder)
+        # Sleep Timer plugin
+        try:
+            from plugins.sleeptimer.sleeptimer_plugin import SleepTimerDialog, SleepTimerWidget
+            sleep_timer_dialog = SleepTimerDialog
+            sleep_timer_widget = SleepTimerWidget
+            self.logger.info("Sleep Timer plugin loaded successfully")
+        except ImportError as e:
+            sleep_timer_dialog = None
+            sleep_timer_widget = None
+            self.logger.warning(f"Sleep Timer plugin not found: {e}")
+        
         self.register_plugin(PluginInfo(
             id="sleep_timer",
             name="Sleep Timer",
-            description="Auto-stop playback after specified time",
-            version="0.1.0",
+            description="Auto-stop or quit after specified time",
+            version="1.0.0",
             author="AudioWave",
             icon="⏰",
             enabled=False,
             has_dialog=True,
-            has_widget=False,
+            has_widget=True,  # Widget je helper za timer management
             has_context_menu=False,
-            shortcut="",
-            dialog_class=None,  # TODO: Implementirati
+            shortcut="F7",
+            dialog_class=sleep_timer_dialog,
+            widget_class=sleep_timer_widget,
         ))
         
         # Theme Creator plugin
@@ -190,6 +204,31 @@ class PluginManager(QObject):
             dialog_class=theme_creator_dialog,
             widget_class=theme_creator_widget,
         ))
+        
+        # ===== RADIO BROWSER PLUGIN =====
+        try:
+            from plugins.radio_browser.radio_browser_plugin import RadioBrowserPlugin
+            radio_browser_widget = RadioBrowserPlugin
+            self.logger.info("Radio Browser plugin loaded successfully")
+        except ImportError as e:
+            radio_browser_widget = None
+            self.logger.warning(f"Radio Browser plugin not found: {e}")
+        
+        self.register_plugin(PluginInfo(
+            id="radio_browser",
+            name="Radio Browser",
+            description="Pretraga i reprodukcija živih radio stanica sa radio-browser.info",
+            version="1.0.0",
+            author="TrayWave Team",
+            icon="📡",
+            enabled=True,  # Defaultno omogućen
+            has_dialog=False,  # Nema dialog, koristi widget
+            has_widget=True,
+            has_context_menu=False,
+            shortcut="F5",  # Brzi pristup
+            dialog_class=None,
+            widget_class=radio_browser_widget,
+        ))
     
     def register_plugin(self, plugin: PluginInfo):
         """
@@ -213,6 +252,21 @@ class PluginManager(QObject):
         """
         return self.plugins.get(plugin_id)
     
+    def is_enabled(self, plugin_id: str) -> bool:
+        """
+        Proveri da li je plugin omogućen.
+        
+        Args:
+            plugin_id: ID plugina
+            
+        Returns:
+            True ako je plugin omogućen, False inače
+        """
+        plugin = self.plugins.get(plugin_id)
+        if not plugin:
+            return False
+        return plugin.enabled
+    
     def get_all_plugins(self) -> List[PluginInfo]:
         """
         Dobij listu svih pluginova.
@@ -231,78 +285,70 @@ class PluginManager(QObject):
         """
         return [p for p in self.plugins.values() if p.enabled]
     
-    def enable_plugin(self, plugin_id: str) -> bool:
+    def enable_plugin(self, plugin_id: str):
         """
         Omogući plugin.
         
         Args:
             plugin_id: ID plugina
-            
-        Returns:
-            True ako je uspešno
         """
-        if plugin_id in self.plugins:
-            self.plugins[plugin_id].enabled = True
-            self._save_state()
-            self.plugin_enabled.emit(plugin_id)
-            self.plugins_changed.emit()
-            self.logger.info(f"Plugin enabled: {plugin_id}")
-            return True
-        self.logger.warning(f"Plugin not found for enabling: {plugin_id}")
-        return False
+        plugin = self.plugins.get(plugin_id)
+        
+        if not plugin:
+            self.logger.warning(f"Plugin not found: {plugin_id}")
+            return
+        
+        if plugin.enabled:
+            self.logger.info(f"Plugin already enabled: {plugin_id}")
+            return
+        
+        plugin.enabled = True
+        self.plugin_enabled.emit(plugin_id)
+        self.plugins_changed.emit()
+        self._save_state()
+        
+        self.logger.info(f"Plugin enabled: {plugin_id}")
     
-    def disable_plugin(self, plugin_id: str) -> bool:
+    def disable_plugin(self, plugin_id: str):
         """
         Onemogući plugin.
         
         Args:
             plugin_id: ID plugina
-            
-        Returns:
-            True ako je uspešno
-        """
-        if plugin_id in self.plugins:
-            self.plugins[plugin_id].enabled = False
-            self._save_state()
-            self.plugin_disabled.emit(plugin_id)
-            self.plugins_changed.emit()
-            self.logger.info(f"Plugin disabled: {plugin_id}")
-            return True
-        self.logger.warning(f"Plugin not found for disabling: {plugin_id}")
-        return False
-    
-    def toggle_plugin(self, plugin_id: str) -> bool:
-        """
-        Toggle stanje plugina.
-        
-        Args:
-            plugin_id: ID plugina
-            
-        Returns:
-            Novo stanje (True = enabled)
-        """
-        if plugin_id in self.plugins:
-            if self.plugins[plugin_id].enabled:
-                self.disable_plugin(plugin_id)
-                return False
-            else:
-                self.enable_plugin(plugin_id)
-                return True
-        self.logger.warning(f"Plugin not found for toggling: {plugin_id}")
-        return False
-    
-    def is_enabled(self, plugin_id: str) -> bool:
-        """
-        Proveri da li je plugin omogućen.
-        
-        Args:
-            plugin_id: ID plugina
-            
-        Returns:
-            True ako je omogućen
         """
         plugin = self.plugins.get(plugin_id)
-        return plugin.enabled if plugin else False
+        
+        if not plugin:
+            self.logger.warning(f"Plugin not found: {plugin_id}")
+            return
+        
+        if not plugin.enabled:
+            self.logger.info(f"Plugin already disabled: {plugin_id}")
+            return
+        
+        plugin.enabled = False
+        self.plugin_disabled.emit(plugin_id)
+        self.plugins_changed.emit()
+        self._save_state()
+        
+        self.logger.info(f"Plugin disabled: {plugin_id}")
+    
+    def toggle_plugin(self, plugin_id: str):
+        """
+        Toggle plugin stanje.
+        
+        Args:
+            plugin_id: ID plugina
+        """
+        plugin = self.plugins.get(plugin_id)
+        
+        if not plugin:
+            return
+        
+        if plugin.enabled:
+            self.disable_plugin(plugin_id)
+        else:
+            self.enable_plugin(plugin_id)
     
     def show_plugin_dialog(self, plugin_id: str, parent=None, **kwargs):
         """
@@ -337,10 +383,36 @@ class PluginManager(QObject):
         
         try:
             dialog = plugin.dialog_class(parent, **kwargs)
+            
+            # Za Sleep Timer, poveži signale
+            if plugin_id == "sleep_timer":
+                self._connect_sleep_timer_signals(dialog, parent, kwargs)
+            
             dialog.exec()
             self.logger.info(f"Dialog shown for plugin: {plugin_id}")
         except Exception as e:
             self.logger.error(f"Error showing dialog for plugin {plugin_id}: {e}")
+    
+    def _connect_sleep_timer_signals(self, dialog, parent, kwargs):
+        """Poveži Sleep Timer signale sa widget-om"""
+        try:
+            # Kreiraj ili dobij Sleep Timer widget
+            app = kwargs.get('app', None)
+            if app and hasattr(app, 'sleep_timer_widget'):
+                # Već postoji
+                timer_widget = app.sleep_timer_widget
+            else:
+                # Kreiraj novi
+                from plugins.sleeptimer.sleeptimer_plugin import SleepTimerWidget
+                timer_widget = SleepTimerWidget(parent, **kwargs)
+                if app:
+                    app.sleep_timer_widget = timer_widget
+            
+            # Poveži signal
+            dialog.timer_started.connect(timer_widget.start_timer)
+            
+        except Exception as e:
+            self.logger.error(f"Error connecting sleep timer signals: {e}")
     
     def show_plugin_widget(self, plugin_id: str, parent=None, **kwargs):
         """
@@ -359,21 +431,44 @@ class PluginManager(QObject):
         if not plugin or not plugin.enabled or not plugin.widget_class:
             return None
         
-        # Prosledi app ako postoji u kwargs
-        if 'app' not in kwargs and parent and hasattr(parent, 'app'):
-            kwargs['app'] = parent.app
-        
-        # Prosledi plugin_manager ako nije već prosleđen
-        if 'plugin_manager' not in kwargs:
-            kwargs['plugin_manager'] = self
-        
+        # ✅ FIX: Za Radio Browser, prosledi sve argumente direktno
+        # RadioBrowserPlugin sada može da ekstraktuje šta mu treba
         try:
+            # Za sve pluginove (uključujući Radio Browser), prosledi sve argumente
+            self.logger.info(f"Creating widget for plugin: {plugin_id}")
+            
+            # Prosledi app ako postoji u kwargs
+            if 'app' not in kwargs and parent and hasattr(parent, 'app'):
+                kwargs['app'] = parent.app
+            
+            # Prosledi plugin_manager ako nije već prosleđen
+            if 'plugin_manager' not in kwargs:
+                kwargs['plugin_manager'] = self
+            
+            # Kreiraj widget
             widget = plugin.widget_class(parent, **kwargs)
             self.logger.info(f"Widget created for plugin: {plugin_id}")
+            
+            # Poveži signal za dodavanje radio stanica
+            if hasattr(widget, 'add_to_playlist'):
+                widget.add_to_playlist.connect(self._handle_radio_station_add)
+                self.logger.info(f"Connected add_to_playlist signal for plugin: {plugin_id}")
+            
             return widget
+            
         except Exception as e:
             self.logger.error(f"Error creating widget for plugin {plugin_id}: {e}")
+            import traceback
+            traceback.print_exc()
             return None
+    
+    def _handle_radio_station_add(self, name: str, url: str):
+        """
+        Handler za dodavanje radio stanice u playlist.
+        Emituje globalni signal koji glavni prozor može da hendluje.
+        """
+        self.logger.info(f"Radio station add requested: {name} - {url}")
+        self.add_radio_to_playlist.emit(name, url)
     
     def get_context_menu_items(self) -> List[Dict]:
         """
@@ -526,34 +621,6 @@ if __name__ == "__main__":
     print(f"Total plugins: {len(all_plugins)}")
     print(f"Enabled: {enabled_count}")
     print(f"Disabled: {len(all_plugins) - enabled_count}")
-    
-    # Test prosleđivanje app parametra
-    print("\n=== Testing app parameter passing ===")
-    
-    class MockParent:
-        def __init__(self):
-            self.app = "MockAppInstance"
-    
-    mock_parent = MockParent()
-    
-    # Testiranje show_plugin_dialog sa app parametrom
-    try:
-        # Ovo će samo testirati poziv, neće otvoriti dijalog ako plugin nije dostupan
-        pm.show_plugin_dialog("equalizer", mock_parent)
-        print("✓ Plugin dialog called with app parameter")
-    except Exception as e:
-        print(f"✗ Error: {e}")
-    
-    # Test Theme Creator plugin
-    print("\n=== Testing Theme Creator Plugin ===")
-    theme_creator = pm.get_plugin("theme_creator")
-    if theme_creator:
-        print(f"Found: {theme_creator.name}")
-        print(f"Enabled: {theme_creator.enabled}")
-        print(f"Has dialog: {theme_creator.has_dialog}")
-    else:
-        print("Theme Creator plugin not found!")
-        print("Make sure plugins/theme_creator/theme_creator_plugin.py exists")
     
     print("\n" + "="*50)
     print("Test završen!")

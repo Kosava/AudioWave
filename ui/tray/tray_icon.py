@@ -5,7 +5,7 @@
 SIGURAN System Tray Icon za AudioWave
 ✅ Bez segfault-a pri zatvaranju
 ✅ Proper cleanup Qt objekata
-✅ Hande za mouse i keyboard interakcije
+✅ Handle za mouse i keyboard interakcije
 ✅ Theme-aware ikone
 """
 
@@ -166,13 +166,13 @@ class TrayIcon(QObject):
         try:
             # Middle click za play/pause
             if reason == QSystemTrayIcon.ActivationReason.MiddleClick:
-                print("📌 Tray middle click: play/pause")
+                print("🔌 Tray middle click: play/pause")
                 self.play_pause_requested.emit()
                 return
             
             # Left click za toggle prozora
             if reason == QSystemTrayIcon.ActivationReason.Trigger:
-                print("📌 Tray left click: toggle window")
+                print("🔌 Tray left click: toggle window")
                 self._toggle_window_visibility()
                 
         except Exception as e:
@@ -204,15 +204,15 @@ class TrayIcon(QObject):
             if main_window:
                 if main_window.isVisible() and not main_window.isMinimized():
                     # Sakrij prozor
-                    print("📌 Hiding main window")
+                    print("🔌 Hiding main window")
                     self.hide_requested.emit()
                 else:
                     # Prikaži prozor
-                    print("📌 Showing main window")
+                    print("🔌 Showing main window")
                     self.show_requested.emit()
             else:
                 # Ako ne postoji prozor, emituj show
-                print("📌 Main window not found, requesting show")
+                print("🔌 Main window not found, requesting show")
                 self.show_requested.emit()
                 
         except Exception as e:
@@ -407,45 +407,3 @@ class TrayIcon(QObject):
                     self._tray.setIcon(self._load_icon())
                 except Exception as e:
                     print(f"⚠️ Error updating tray icon theme: {e}")
-
-
-# ===== TEST FUNCTION =====
-def test_tray_icon():
-    """Test funkcija za tray icon"""
-    import sys
-    
-    app = QApplication(sys.argv)
-    
-    print("🧪 Testing TrayIcon...")
-    
-    # Kreiraj mock prozor
-    window = QMainWindow()
-    window.setWindowTitle("AudioWave Test")
-    
-    # Kreiraj tray icon
-    tray = TrayIcon(app, window)
-    
-    # Poveži signale
-    tray.show_requested.connect(lambda: print("Show requested"))
-    tray.hide_requested.connect(lambda: print("Hide requested"))
-    tray.quit_requested.connect(lambda: print("Quit requested"))
-    tray.play_pause_requested.connect(lambda: print("Play/Pause requested"))
-    
-    # Test functions
-    print(f"Tray visible: {tray.is_visible()}")
-    
-    # Prikaži prozor
-    window.show()
-    
-    # Pokreni app
-    exit_code = app.exec()
-    
-    # Cleanup
-    print("🧪 Cleaning up tray test...")
-    tray.cleanup()
-    
-    return exit_code
-
-
-if __name__ == "__main__":
-    test_tray_icon()

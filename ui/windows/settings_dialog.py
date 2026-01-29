@@ -41,7 +41,7 @@ try:
 except ImportError:
     PLUGIN_MANAGER_AVAILABLE = False
 
-# Import Engine Factory za čuvanje preferencije
+# Import Engine Factory za ÄÂuvanje preferencije
 try:
     from core.engine_factory import (
         save_engine_preference, 
@@ -64,7 +64,7 @@ except ImportError:
 def detect_available_backends():
     """
     Detektuje dostupne audio backend-ove na sistemu.
-    Vraća dict sa statusom svakog backend-a.
+    VraÄâ€¡a dict sa statusom svakog backend-a.
     """
     backends = {
         "qt_multimedia": {
@@ -72,42 +72,42 @@ def detect_available_backends():
             "available": True,  # Uvek dostupan jer koristimo PyQt6
             "has_eq": False,
             "description": "Default Qt6 audio (no EQ support)",
-            "icon": "🎵"
+            "icon": ""
         },
         "gstreamer": {
             "name": "GStreamer",
             "available": False,
             "has_eq": True,
             "description": "Full EQ support via equalizer-10bands",
-            "icon": "🎛️"
+            "icon": ""
         },
         "pipewire": {
             "name": "PipeWire",
             "available": False,
             "has_eq": True,
             "description": "Modern Linux audio with filter-chain EQ",
-            "icon": "📊"
+            "icon": ""
         },
         "pulseaudio": {
             "name": "PulseAudio",
             "available": False,
             "has_eq": True,
             "description": "Linux audio with pulseeffects EQ",
-            "icon": "📉"
+            "icon": ""
         },
         "jack": {
             "name": "JACK",
             "available": False,
             "has_eq": True,
             "description": "Professional low-latency audio",
-            "icon": "🎚️"
+            "icon": ""
         },
         "null": {
             "name": "Null Output",
             "available": True,
             "has_eq": False,
             "description": "Silent output for testing",
-            "icon": "🔇"
+            "icon": ""
         }
     }
     
@@ -182,9 +182,27 @@ class PluginCard(QFrame):
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(12)
         
-        # Ikona
-        icon_label = QLabel(self.plugin_info.icon)
-        icon_label.setFont(QFont("Segoe UI Emoji", 24))
+        # Ikona - SVG umesto emoji
+        from ui.utils.svg_icon_manager import get_icon
+        
+        # Mapiranje plugin ID-eva na SVG ikone
+        icon_map = {
+            'equalizer': 'equalizer_icon',
+            'lyrics': 'lyrics_icon',
+            'notifications': 'notification_icon',
+            'discord': 'discord_icon',
+            'scrobbler': 'scrobbler_icon',
+            'visualizer': 'visualizer_icon',
+            'statistics': 'stats_icon',
+            'shortcuts': 'shortcuts_icon',
+            'themes': 'theme_icon',
+        }
+        
+        icon_name = icon_map.get(self.plugin_info.id, 'plugin')
+        svg_icon = get_icon(icon_name, "#667eea", 32)
+        
+        icon_label = QLabel()
+        icon_label.setPixmap(svg_icon.pixmap(32, 32))
         icon_label.setFixedWidth(40)
         layout.addWidget(icon_label)
         
@@ -203,7 +221,7 @@ class PluginCard(QFrame):
         
         meta_text = f"v{self.plugin_info.version}"
         if self.plugin_info.shortcut:
-            meta_text += f" • {self.plugin_info.shortcut}"
+            meta_text += f" | {self.plugin_info.shortcut}"
         meta_label = QLabel(meta_text)
         meta_label.setStyleSheet("color: #666; font-size: 10px; background: transparent;")
         info_layout.addWidget(meta_label)
@@ -268,25 +286,47 @@ class SettingsDialog(QDialog):
             self.plugin_manager = None
         
         self.setup_ui()
-        # ✅ REPLACED: Theme-aware styling instead of hardcoded dark
+        # ✓ REPLACED: Theme-aware styling instead of hardcoded dark
         self.apply_theme_stylesheet()
         
-        # ✅ NOVO: Učitaj sačuvanu preferenciju audio backend-a
+        # ✓ NOVO: UÄÂitaj saÄÂuvanu preferenciju audio backend-a
         self._load_saved_backend_preference()
         
     def setup_ui(self):
-        self.setWindowTitle(f"⚙️ {APP_NAME} Settings")
+        self.setWindowTitle(f"{APP_NAME} Settings")
         self.setMinimumSize(600, 580)
         
         layout = QVBoxLayout(self)
         
         self.tab_widget = QTabWidget()
         
-        self.tab_widget.addTab(self.create_appearance_tab(), "🎨 Appearance")
-        self.tab_widget.addTab(self.create_audio_tab(), "📊 Audio")
-        self.tab_widget.addTab(self.create_playback_tab(), "▶ Playback")
-        self.tab_widget.addTab(self.create_plugins_tab(), "🔌 Plugins")
-        self.tab_widget.addTab(self.create_about_tab(), "ℹ️ About")
+        # ===== TABOVI SA SVG IKONAMA =====
+        from ui.utils.svg_icon_manager import get_icon
+        
+        # Appearance tab
+        appearance_tab = self.create_appearance_tab()
+        appearance_icon = get_icon('palette', "#667eea", 16)
+        self.tab_widget.addTab(appearance_tab, appearance_icon, "Appearance")
+        
+        # Audio tab
+        audio_tab = self.create_audio_tab()
+        audio_icon = get_icon('speaker', "#667eea", 16)
+        self.tab_widget.addTab(audio_tab, audio_icon, "Audio")
+        
+        # Playback tab
+        playback_tab = self.create_playback_tab()
+        playback_icon = get_icon('play_circle', "#667eea", 16)
+        self.tab_widget.addTab(playback_tab, playback_icon, "Playback")
+        
+        # Plugins tab
+        plugins_tab = self.create_plugins_tab()
+        plugins_icon = get_icon('plugin', "#667eea", 16)
+        self.tab_widget.addTab(plugins_tab, plugins_icon, "Plugins")
+        
+        # About tab
+        about_tab = self.create_about_tab()
+        about_icon = get_icon('info_circle', "#667eea", 16)
+        self.tab_widget.addTab(about_tab, about_icon, "About")
         
         layout.addWidget(self.tab_widget)
         
@@ -311,22 +351,22 @@ class SettingsDialog(QDialog):
     
     def _load_saved_backend_preference(self):
         """
-        ✅ NOVO: Učitaj sačuvanu preferenciju audio backend-a i postavi combo box
+        ✓ NOVO: UÄÂitaj saÄÂuvanu preferenciju audio backend-a i postavi combo box
         """
         try:
             saved_backend = load_engine_preference()
-            print(f"🔧 [Settings] Loading saved backend preference: {saved_backend}")
+            print(f"[Settings] Loading saved backend preference: {saved_backend}")
             
-            # Pronađi index u combo box-u po data vrednosti
+            # PronaÄâ€˜i index u combo box-u po data vrednosti
             for i in range(self.backend_combo.count()):
                 if self.backend_combo.itemData(i) == saved_backend:
                     self.backend_combo.setCurrentIndex(i)
-                    print(f"✅ [Settings] Backend combo set to index {i}: {saved_backend}")
+                    print(f"✓ [Settings] Backend combo set to index {i}: {saved_backend}")
                     break
             else:
-                print(f"⚠️ [Settings] Saved backend '{saved_backend}' not found in combo, using default")
+                print(f"[Settings] Saved backend '{saved_backend}' not found in combo, using default")
         except Exception as e:
-            print(f"⚠️ [Settings] Error loading backend preference: {e}")
+            print(f"[Settings] Error loading backend preference: {e}")
     
     def create_appearance_tab(self):
         """Appearance settings"""
@@ -395,7 +435,7 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(tab)
         
         # ===== AUDIO BACKEND =====
-        group_backend = QGroupBox("📊 Audio Output Backend")
+        group_backend = QGroupBox("Audio Output Backend")
         backend_layout = QVBoxLayout(group_backend)
         
         # Info label
@@ -415,8 +455,8 @@ class SettingsDialog(QDialog):
         
         # Dodaj dostupne backend-ove
         for backend_id, info in self.available_backends.items():
-            status = "✅" if info["available"] else "❌"
-            eq_status = "🎛️" if info["has_eq"] else ""
+            status = "✓" if info["available"] else "✗"
+            eq_status = "" if info["has_eq"] else ""
             display_text = f"{info['icon']} {info['name']} {eq_status} {status}"
             self.backend_combo.addItem(display_text, backend_id)
             
@@ -439,13 +479,13 @@ class SettingsDialog(QDialog):
         self.backend_desc_label.setWordWrap(True)
         backend_layout.addWidget(self.backend_desc_label)
         
-        # Ažuriraj opis
+        # AÅ¾uriraj opis
         self._on_backend_changed(0)
         
         layout.addWidget(group_backend)
         
         # ===== VOLUME =====
-        group_volume = QGroupBox("🔉 Volume")
+        group_volume = QGroupBox("Volume")
         form_volume = QFormLayout(group_volume)
         
         self.volume_slider = QSlider(Qt.Orientation.Horizontal)
@@ -469,15 +509,15 @@ class SettingsDialog(QDialog):
         layout.addWidget(group_volume)
         
         # ===== AUDIO DEVICES =====
-        group_devices = QGroupBox("🎧 Output Device")
+        group_devices = QGroupBox("Output Device")
         devices_form = QFormLayout(group_devices)
         
         self.device_combo = QComboBox()
-        self.device_combo.addItem("📊 System Default")
+        self.device_combo.addItem("System Default")
         
-        # TODO: Popuni sa stvarnim uređajima iz backend-a
+        # TODO: Popuni sa stvarnim ureÄ‘ajima iz backend-a
         
-        self.refresh_devices_btn = QPushButton("🔄 Refresh")
+        self.refresh_devices_btn = QPushButton("Refresh")
         self.refresh_devices_btn.setFixedWidth(80)
         self.refresh_devices_btn.clicked.connect(self._refresh_audio_devices)
         
@@ -499,7 +539,7 @@ class SettingsDialog(QDialog):
         if backend_id and backend_id in self.available_backends:
             info = self.available_backends[backend_id]
             
-            eq_text = "✅ Equalizer supported" if info["has_eq"] else "❌ No EQ support"
+            eq_text = "✓ Equalizer supported" if info["has_eq"] else "✗ No EQ support"
             status_text = "Available" if info["available"] else "Not installed"
             
             self.backend_desc_label.setText(
@@ -510,7 +550,7 @@ class SettingsDialog(QDialog):
             )
     
     def _refresh_audio_devices(self):
-        """Osveži listu audio uređaja"""
+        """OsveÅ¾i listu audio ureÄ‘aja"""
         # TODO: Implementirati za svaki backend
         QMessageBox.information(
             self, "Refresh Devices",
@@ -561,7 +601,7 @@ class SettingsDialog(QDialog):
         layout = QVBoxLayout(tab)
         layout.setSpacing(15)
         
-        header_label = QLabel("🔌 Manage Plugins")
+        header_label = QLabel("Manage Plugins")
         header_label.setStyleSheet("font-size: 16px; font-weight: bold;")
         layout.addWidget(header_label)
         
@@ -594,7 +634,7 @@ class SettingsDialog(QDialog):
         return tab
     
     def _on_plugin_toggled(self, plugin_id: str, enabled: bool):
-        """Kada se plugin uključi/isključi"""
+        """Kada se plugin ukljuÄÂi/iskljuÄÂi"""
         if self.plugin_manager:
             if enabled:
                 self.plugin_manager.enable_plugin(plugin_id)
@@ -616,7 +656,7 @@ class SettingsDialog(QDialog):
         layout.setSpacing(15)
         
         # Logo/Title
-        title_label = QLabel(f"🎵 {APP_NAME}")
+        title_label = QLabel(f"{APP_NAME}")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setStyleSheet("font-size: 28px; font-weight: bold;")
         layout.addWidget(title_label)
@@ -637,9 +677,9 @@ class SettingsDialog(QDialog):
         info_layout = QFormLayout(info_group)
         info_layout.setSpacing(8)
         
-        info_layout.addRow("👤 Author:", QLabel(AUTHOR_NAME))
-        info_layout.addRow("📜 License:", QLabel(LICENSE))
-        info_layout.addRow("©️ Copyright:", QLabel(f"{COPYRIGHT_YEAR} {AUTHOR_NAME}"))
+        info_layout.addRow("Author:", QLabel(AUTHOR_NAME))
+        info_layout.addRow("License:", QLabel(LICENSE))
+        info_layout.addRow("© Copyright:", QLabel(f"{COPYRIGHT_YEAR} {AUTHOR_NAME}"))
         
         layout.addWidget(info_group)
         
@@ -647,12 +687,12 @@ class SettingsDialog(QDialog):
         links_layout = QHBoxLayout()
         links_layout.setSpacing(10)
         
-        github_btn = QPushButton("🙈 GitHub")
+        github_btn = QPushButton("GitHub")
         github_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         github_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(AUTHOR_GITHUB)))
         links_layout.addWidget(github_btn)
         
-        project_btn = QPushButton("🏠 Project Page")
+        project_btn = QPushButton("Project Page")
         project_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         project_btn.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(PROJECT_URL)))
         links_layout.addWidget(project_btn)
@@ -660,7 +700,7 @@ class SettingsDialog(QDialog):
         layout.addLayout(links_layout)
         layout.addStretch()
         
-        tech_label = QLabel("Built with Python 3.11+ • PyQt6 • Mutagen")
+        tech_label = QLabel("Built with Python 3.11+ | PyQt6 | Mutagen")
         tech_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         tech_label.setStyleSheet("color: #666; font-size: 10px;")
         layout.addWidget(tech_label)
@@ -722,18 +762,28 @@ class SettingsDialog(QDialog):
         if hasattr(self.parent_window, 'engine') and self.parent_window.engine:
             self.parent_window.engine.set_volume(settings["audio"]["default_volume"])
         
-        # ✅ NOVO: Sačuvaj audio backend preferenciju
+        # âœ… Proveri da li se backend ZAISTA promenio
         current_backend = settings["audio"]["backend"]
-        if current_backend:
+        previous_backend = load_engine_preference()
+        
+        print(f"[CHECK] [Settings] Checking backend change:")
+        print(f"   Current:  {current_backend}")
+        print(f"   Previous: {previous_backend}")
+        print(f"   Changed:  {current_backend != previous_backend}")
+        
+        if current_backend and current_backend != previous_backend:
+            # Backend se promenio - saÄuvaj i prikaÅ¾i poruku
             save_engine_preference(current_backend)
-            print(f"💾 [Settings] Saved audio backend preference: {current_backend}")
+            print(f"[SAVE] [Settings] Audio backend changed: {previous_backend} â†’ {current_backend}")
             
-            # Prikaži poruku ako se backend promenio
             QMessageBox.information(
                 self, "Backend Changed",
                 f"Audio backend set to: {current_backend}\n\n"
                 "Please restart the application for the change to take effect."
             )
+        elif current_backend:
+            # Backend isti kao pre - samo logujem
+            print(f"â„¹ï¸ [Settings] Audio backend unchanged: {current_backend}")
         
         self.settings_saved.emit(settings)
         self.accept()
@@ -766,10 +816,10 @@ class SettingsDialog(QDialog):
             )
             
             self.setStyleSheet(stylesheet)
-            print(f"✅ [SettingsDialog] Theme applied: {theme_name} (is_dark={is_dark})")
+            print(f"✓ [SettingsDialog] Theme applied: {theme_name} (is_dark={is_dark})")
         
         except Exception as e:
-            print(f"⚠️ [SettingsDialog] Could not apply theme: {e}")
+            print(f"[SettingsDialog] Could not apply theme: {e}")
             # Fallback to hardcoded dark theme
             self.apply_style_fallback()
     

@@ -12,7 +12,7 @@ try:
     METADATA_READER_AVAILABLE = True
 except ImportError as e:
     METADATA_READER_AVAILABLE = False
-    print(f'⚠️ Metadata utilities not available: {e}')
+    print(f'âš ï¸ Metadata utilities not available: {e}')
 
 
 class PlaylistCacheManager:
@@ -57,6 +57,13 @@ class PlaylistCacheManager:
         
         self.stats["cache_misses"] += 1
         
+        # Provera da li je URL (radio stream) - nema trajanje
+        if filepath.startswith(('http://', 'https://', 'rtsp://', 'mms://')):
+            duration_str = "LIVE"
+            with self._cache_lock:
+                self.duration_cache[filepath] = duration_str
+            return duration_str
+        
         # Check if already loading
         with self._loading_lock:
             if filepath in self.loading_durations:
@@ -97,6 +104,14 @@ class PlaylistCacheManager:
         
         self.stats["display_name_misses"] += 1
         
+        # Provera da li je URL (radio stream)
+        if filepath.startswith(('http://', 'https://', 'rtsp://', 'mms://')):
+            # Za URL-ove, prikaži samo URL bez metapodataka
+            display_name = self._format_url_display_name(filepath)
+            with self._cache_lock:
+                self.display_name_cache[filepath] = display_name
+            return display_name
+        
         # Get from metadata cache or load
         with self._cache_lock:
             if filepath in self.metadata_cache:
@@ -130,6 +145,38 @@ class PlaylistCacheManager:
             pass
         
         return Path(filepath).stem
+    
+    def _format_url_display_name(self, url):
+        """Format display name for streaming URLs"""
+        try:
+            # Pokušaj da izvučeš smisleni deo URL-a
+            # Primer: http://stream.example.com/live.mp3 -> live.mp3
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            
+            # Uzmi ime fajla iz putanje ako postoji
+            path_parts = parsed.path.strip('/').split('/')
+            if path_parts and path_parts[-1]:
+                # Ukloni ekstenziju ako ima
+                name = path_parts[-1]
+                if '.' in name:
+                    name = '.'.join(name.split('.')[:-1])
+                if name:
+                    return f"📡 {name}"
+            
+            # Ako nema putanje, koristi domen
+            if parsed.netloc:
+                return f"📡 {parsed.netloc}"
+            
+            # Fallback: prikaži ceo URL skraćeno
+            if len(url) > 50:
+                return f"📡 {url[:47]}..."
+            return f"📡 {url}"
+        except:
+            # Ako parsiranje ne uspe, prikaži skraćeni URL
+            if len(url) > 50:
+                return f"📡 {url[:47]}..."
+            return f"📡 {url}"
     
     def load_duration_async(self, filepath):
         """Load duration in background"""

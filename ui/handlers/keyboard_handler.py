@@ -36,15 +36,15 @@ class KeyboardHandler(QObject):
         if PLUGIN_MANAGER_AVAILABLE:
             try:
                 self.plugin_manager = get_plugin_manager()
-                print("✅ PluginManager initialized")
+                print("âœ… PluginManager initialized")
             except Exception as e:
-                print(f"❌ Failed to get PluginManager: {e}")
+                print(f"âŒ Failed to get PluginManager: {e}")
                 self.plugin_manager = None
         else:
             self.plugin_manager = None
-            print("⚠️ PluginManager not available")
+            print("âš ï¸ PluginManager not available")
         
-        print("⌨️ KeyboardHandler initialized")
+        print("âŒ¨ï¸ KeyboardHandler initialized")
     
     def _is_text_input_focused(self) -> bool:
         """
@@ -84,29 +84,29 @@ class KeyboardHandler(QObject):
         Handle keyboard events - ONLY KeyPress, ignore KeyRelease
         
         Returns:
-            True ako je event obrađen, False ako treba da prođe dalje
+            True ako je event obraÄ‘en, False ako treba da proÄ‘e dalje
         """
         
-        # ✅ Only handle KeyPress events, ignore KeyRelease
+        # âœ… Only handle KeyPress events, ignore KeyRelease
         if event.type() != QEvent.Type.KeyPress:
             return False
         
-        # ✅ Ignore auto-repeat events (holding key down)
+        # âœ… Ignore auto-repeat events (holding key down)
         if event.isAutoRepeat():
             return False
         
         key = event.key()
         modifiers = event.modifiers()
         
-        # ✅ NOVO: Proveri da li je fokus na text input polju
-        # Ako jeste, propusti većinu tastera da idu u text input
+        # âœ… NOVO: Proveri da li je fokus na text input polju
+        # Ako jeste, propusti veÄ‡inu tastera da idu u text input
         if self._is_text_input_focused():
             # Dozvoli samo GLOBALNE shortcutte koji imaju modifier (Ctrl, Alt)
-            # ili function keys koji ne utiču na tekst
+            # ili function keys koji ne utiÄu na tekst
             has_ctrl = bool(modifiers & Qt.KeyboardModifier.ControlModifier)
             has_alt = bool(modifiers & Qt.KeyboardModifier.AltModifier)
             
-            # Function keys su OK čak i u text inputu
+            # Function keys su OK Äak i u text inputu
             is_function_key = Qt.Key.Key_F1 <= key <= Qt.Key.Key_F12
             
             # Ako nema modifiera i nije function key, propusti event
@@ -121,7 +121,7 @@ class KeyboardHandler(QObject):
             if has_ctrl and key in (Qt.Key.Key_C, Qt.Key.Key_V, Qt.Key.Key_X, Qt.Key.Key_Z):
                 return False
             
-            # Escape u text inputu - propusti (može da služi za zatvaranje dijaloga)
+            # Escape u text inputu - propusti (moÅ¾e da sluÅ¾i za zatvaranje dijaloga)
             if key == Qt.Key.Key_Escape:
                 return False
             
@@ -156,6 +156,11 @@ class KeyboardHandler(QObject):
             self._refresh_playlist()
             return True
         
+        # F7 - Sleep Timer (plugin)
+        if key == Qt.Key.Key_F7:
+            self._show_sleep_timer()
+            return True
+        
         # ===== PLAYBACK CONTROLS =====
         
         # Space - Play/Pause
@@ -187,7 +192,7 @@ class KeyboardHandler(QObject):
         
         # ===== VOLUME CONTROLS =====
         
-        # Ctrl + Up/Down - Volume ±5%
+        # Ctrl + Up/Down - Volume Â±5%
         if modifiers & Qt.KeyboardModifier.ControlModifier:
             if key == Qt.Key.Key_Up:
                 self._adjust_volume(5)
@@ -196,7 +201,7 @@ class KeyboardHandler(QObject):
                 self._adjust_volume(-5)
                 return True
         
-        # Alt + Up/Down - Volume ±10%
+        # Alt + Up/Down - Volume Â±10%
         if modifiers & Qt.KeyboardModifier.AltModifier:
             if key == Qt.Key.Key_Up:
                 self._adjust_volume(10)
@@ -207,7 +212,7 @@ class KeyboardHandler(QObject):
         
         # ===== SEEK CONTROLS =====
         
-        # Ctrl + Left/Right - Seek ±10 seconds
+        # Ctrl + Left/Right - Seek Â±10 seconds
         if modifiers & Qt.KeyboardModifier.ControlModifier:
             if key == Qt.Key.Key_Left:
                 self._seek_relative(-10000)
@@ -227,7 +232,7 @@ class KeyboardHandler(QObject):
                     self.window.playback_controller.on_next_clicked()
                 return True
         
-        # Plain Left/Right - Seek ±5 seconds
+        # Plain Left/Right - Seek Â±5 seconds
         if key == Qt.Key.Key_Left and not modifiers:
             self._seek_relative(-5000)
             return True
@@ -265,7 +270,7 @@ class KeyboardHandler(QObject):
             self._open_settings()
             return True
         
-        # Ctrl+E - Equalizer (alternativna prečica)
+        # Ctrl+E - Equalizer (alternativna preÄica)
         if modifiers & Qt.KeyboardModifier.ControlModifier and key == Qt.Key.Key_E:
             self._show_equalizer()
             return True
@@ -303,52 +308,52 @@ class KeyboardHandler(QObject):
     
     def _show_equalizer(self):
         """Show Equalizer dialog (F3)"""
-        print(f"🎛️ F3 pressed - Equalizer shortcut triggered")
+        print(f"ðŸŽ›ï¸ F3 pressed - Equalizer shortcut triggered")
         
-        # Proveri da li je plugin omogućen (ako je plugin manager dostupan)
+        # Proveri da li je plugin omoguÄ‡en (ako je plugin manager dostupan)
         if self.plugin_manager:
             if not self.plugin_manager.is_enabled("equalizer"):
-                self._show_message("⚠️ Equalizer plugin is disabled. Enable it in Settings → Plugins")
+                self._show_message("âš ï¸ Equalizer plugin is disabled. Enable it in Settings â†’ Plugins")
                 return
         
-        # Direktan poziv - zaobilazimo plugin manager jer šalje extra argumente
+        # Direktan poziv - zaobilazimo plugin manager jer Å¡alje extra argumente
         try:
             from plugins.equalizer.equalizer_plugin import EqualizerDialog
             engine = self._get_engine()
             
-            # Pozovi dijalog sa tačno onim argumentima koje očekuje
+            # Pozovi dijalog sa taÄno onim argumentima koje oÄekuje
             dialog = EqualizerDialog(self.window, engine=engine)
             dialog.exec()
-            print("✅ Equalizer opened successfully")
+            print("âœ… Equalizer opened successfully")
         except ImportError as e:
-            print(f"❌ Equalizer plugin not found: {e}")
+            print(f"âŒ Equalizer plugin not found: {e}")
             self._show_message("Equalizer plugin not available")
         except TypeError as e:
-            # Ako EqualizerDialog ne prihvata engine argument, pokušaj bez njega
-            print(f"⚠️ EqualizerDialog TypeError: {e}. Trying without engine...")
+            # Ako EqualizerDialog ne prihvata engine argument, pokuÅ¡aj bez njega
+            print(f"âš ï¸ EqualizerDialog TypeError: {e}. Trying without engine...")
             try:
                 from plugins.equalizer.equalizer_plugin import EqualizerDialog
                 dialog = EqualizerDialog(self.window)
                 dialog.exec()
-                print("✅ Equalizer opened without engine argument")
+                print("âœ… Equalizer opened without engine argument")
             except Exception as e2:
-                print(f"❌ Error opening equalizer: {e2}")
+                print(f"âŒ Error opening equalizer: {e2}")
                 self._show_message(f"Error opening equalizer: {str(e2)}")
         except Exception as e:
-            print(f"❌ Error opening equalizer: {e}")
+            print(f"âŒ Error opening equalizer: {e}")
             self._show_message(f"Error opening equalizer: {str(e)}")
     
     def _show_lyrics(self):
         """Show Lyrics dialog (F4)"""
-        print(f"🎵 F4 pressed - Lyrics shortcut triggered")
+        print(f"ðŸŽµ F4 pressed - Lyrics shortcut triggered")
         
-        # Proveri da li je plugin omogućen (ako je plugin manager dostupan)
+        # Proveri da li je plugin omoguÄ‡en (ako je plugin manager dostupan)
         if self.plugin_manager:
             if not self.plugin_manager.is_enabled("lyrics"):
-                self._show_message("⚠️ Lyrics plugin is disabled. Enable it in Settings → Plugins")
+                self._show_message("âš ï¸ Lyrics plugin is disabled. Enable it in Settings â†’ Plugins")
                 return
         
-        # Direktan poziv - zaobilazimo plugin manager jer šalje extra argumente
+        # Direktan poziv - zaobilazimo plugin manager jer Å¡alje extra argumente
         try:
             from plugins.lyrics.lyrics_plugin import LyricsDialog
             
@@ -363,30 +368,51 @@ class KeyboardHandler(QObject):
                     artist = metadata.get('artist', '')
                     title = metadata.get('title', '')
             
-            print(f"🔍 Searching lyrics for: {artist} - {title}")
+            print(f"ðŸ” Searching lyrics for: {artist} - {title}")
             
             # Pozovi dijalog sa minimalnim argumentima
             dialog = LyricsDialog(self.window, artist=artist, title=title)
             dialog.exec()
-            print("✅ Lyrics opened successfully")
+            print("âœ… Lyrics opened successfully")
         except ImportError as e:
-            print(f"❌ Lyrics plugin not found: {e}")
+            print(f"âŒ Lyrics plugin not found: {e}")
             self._show_message("Lyrics plugin not available")
         except TypeError as e:
-            # Ako LyricsDialog ne prihvata artist/title, pokušaj bez njih
-            print(f"⚠️ LyricsDialog TypeError: {e}. Trying without artist/title...")
+            # Ako LyricsDialog ne prihvata artist/title, pokuÅ¡aj bez njih
+            print(f"âš ï¸ LyricsDialog TypeError: {e}. Trying without artist/title...")
             try:
                 from plugins.lyrics.lyrics_plugin import LyricsDialog
                 dialog = LyricsDialog(self.window)
                 dialog.exec()
-                print("✅ Lyrics opened without artist/title arguments")
+                print("âœ… Lyrics opened without artist/title arguments")
             except Exception as e2:
-                print(f"❌ Error opening lyrics: {e2}")
+                print(f"âŒ Error opening lyrics: {e2}")
                 self._show_message(f"Error opening lyrics: {str(e2)}")
         except Exception as e:
-            print(f"❌ Error opening lyrics: {e}")
+            print(f"âŒ Error opening lyrics: {e}")
             self._show_message(f"Error opening lyrics: {str(e)}")
     
+    
+    def _show_sleep_timer(self):
+        """Show Sleep Timer dialog (F7)"""
+        print(f"⏰ F7 pressed - Sleep Timer shortcut triggered")
+        
+        # Proveri da li je plugin omogućen
+        if self.plugin_manager:
+            if not self.plugin_manager.is_enabled("sleep_timer"):
+                self._show_message("⚠️ Sleep Timer plugin is disabled. Enable it in Settings → Plugins")
+                return
+        
+        # Otvori Sleep Timer dialog kroz plugin manager
+        try:
+            if self.plugin_manager:
+                self.plugin_manager.show_plugin_dialog("sleep_timer", self.window)
+                print("✅ Sleep Timer dialog opened")
+        except Exception as e:
+            print(f"❌ Error opening sleep timer: {e}")
+            import traceback
+            traceback.print_exc()
+            self._show_message(f"Error opening sleep timer: {str(e)}")
     def _show_plugins_settings(self):
         """Show Plugins tab in Settings (Ctrl+P)"""
         try:
@@ -411,42 +437,42 @@ class KeyboardHandler(QObject):
     def _show_shortcuts(self):
         """Show keyboard shortcuts help (Ctrl+H)"""
         shortcuts = """
-🎹 <b>AudioWave - Keyboard Shortcuts</b>
+ðŸŽ¹ <b>AudioWave - Keyboard Shortcuts</b>
 
 <b>Playback:</b>
-• Space - Play/Pause
-• Enter - Play selected
-• Esc - Stop
-• M - Toggle Mute
+â€¢ Space - Play/Pause
+â€¢ Enter - Play selected
+â€¢ Esc - Stop
+â€¢ M - Toggle Mute
 
 <b>Navigation:</b>
-• ↑/↓ - Navigate playlist
-• Alt+← / Alt+→ - Previous/Next track
-• ← / → - Seek ±5 seconds
-• Ctrl+← / Ctrl+→ - Seek ±10 seconds
+â€¢ â†‘/â†“ - Navigate playlist
+â€¢ Alt+â† / Alt+â†’ - Previous/Next track
+â€¢ â† / â†’ - Seek Â±5 seconds
+â€¢ Ctrl+â† / Ctrl+â†’ - Seek Â±10 seconds
 
 <b>Volume:</b>
-• Ctrl+↑ / Ctrl+↓ - Volume ±5%
-• Alt+↑ / Alt+↓ - Volume ±10%
+â€¢ Ctrl+â†‘ / Ctrl+â†“ - Volume Â±5%
+â€¢ Alt+â†‘ / Alt+â†“ - Volume Â±10%
 
 <b>Playlist:</b>
-• Ctrl+A - Select all
-• Del - Remove selected
-• Ctrl+O - Open files
-• Ctrl+L - Clear playlist
-• F2 - Toggle playlist visibility
-• F5 - Refresh
+â€¢ Ctrl+A - Select all
+â€¢ Del - Remove selected
+â€¢ Ctrl+O - Open files
+â€¢ Ctrl+L - Clear playlist
+â€¢ F2 - Toggle playlist visibility
+â€¢ F5 - Refresh
 
 <b>Plugins:</b>
-• F3 / Ctrl+E - Equalizer
-• F4 - Lyrics
-• Ctrl+P - Plugin settings
+â€¢ F3 / Ctrl+E - Equalizer
+â€¢ F4 - Lyrics
+â€¢ Ctrl+P - Plugin settings
 
 <b>Other:</b>
-• Ctrl+S - Settings
-• F1 - About
-• Ctrl+H - Show shortcuts
-• Ctrl+Q - Quit
+â€¢ Ctrl+S - Settings
+â€¢ F1 - About
+â€¢ Ctrl+H - Show shortcuts
+â€¢ Ctrl+Q - Quit
         """
         
         QMessageBox.information(
@@ -554,7 +580,7 @@ class KeyboardHandler(QObject):
                 new_pos = max(0, current_pos + delta_ms)
                 engine.seek_to_position(new_pos)
                 
-                direction = "→" if delta_ms > 0 else "←"
+                direction = "â†’" if delta_ms > 0 else "â†"
                 seconds = abs(delta_ms) // 1000
                 self._show_message(f"Seek {direction} {seconds}s", 1000)
     
@@ -578,4 +604,4 @@ class KeyboardHandler(QObject):
         if hasattr(self.window, 'show_message'):
             self.window.show_message(text, duration)
         else:
-            print(f"ℹ️ {text}")
+            print(f"â„¹ï¸ {text}")

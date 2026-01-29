@@ -15,6 +15,10 @@ from typing import Dict, Optional, List  # DODAJ 'List' OVDE!
 def get_audio_duration(filepath: str) -> Optional[int]:
     """Vrati trajanje audio fajla u sekundama"""
     try:
+        # URL streaming nema poznatu duration - vrati None
+        if is_url(filepath):
+            return None
+        
         path = Path(filepath)
         if not path.exists():
             return None
@@ -24,7 +28,7 @@ def get_audio_duration(filepath: str) -> Optional[int]:
         if audio is not None:
             return int(audio.info.length)
         
-        # Fallback za specifične formate
+        # Fallback za specifiÄne formate
         suffix = path.suffix.lower()
         
         if suffix == '.mp3':
@@ -44,7 +48,7 @@ def get_audio_duration(filepath: str) -> Optional[int]:
         return None
         
     except Exception as e:
-        print(f"⚠️ Error reading duration from {filepath}: {e}")
+        print(f"âš ï¸ Error reading duration from {filepath}: {e}")
         return None
 
 
@@ -57,8 +61,18 @@ def format_duration(seconds: Optional[int]) -> str:
     return f"{minutes}:{seconds:02d}"
 
 
+def is_url(filepath: str) -> bool:
+    """Proveri da li je string URL (stream)"""
+    if not filepath:
+        return False
+    return filepath.startswith(('http://', 'https://', 'mms://', 'rtsp://', 'rtmp://'))
+
+
 def is_audio_file(filepath: str) -> bool:
     """Proveri da li je fajl audio format"""
+    # Ako je URL, tretiramo ga kao audio
+    if is_url(filepath):
+        return True
     audio_extensions = {'.mp3', '.wav', '.flac', '.ogg', '.m4a', '.aac', '.oga', '.mp4'}
     return Path(filepath).suffix.lower() in audio_extensions
 
@@ -82,7 +96,7 @@ def get_audio_metadata(filepath: str) -> Dict:
         genre = ""
         track = "0"
         
-        # Pokušaj da dobiješ metadata
+        # PokuÅ¡aj da dobijeÅ¡ metadata
         if hasattr(audio, 'get'):
             title_list = audio.get("title", [title])
             artist_list = audio.get("artist", [artist])
@@ -116,7 +130,7 @@ def get_audio_metadata(filepath: str) -> Dict:
         return metadata
         
     except Exception as e:
-        print(f"⚠️ Error reading metadata from {filepath}: {e}")
+        print(f"âš ï¸ Error reading metadata from {filepath}: {e}")
         return {
             "title": Path(filepath).stem,
             "artist": "Unknown",
@@ -134,7 +148,7 @@ def get_audio_metadata(filepath: str) -> Dict:
 
 
 def get_audio_formats() -> Dict[str, str]:
-    """Vrati rečnik podržanih audio formata"""
+    """Vrati reÄnik podrÅ¾anih audio formata"""
     return {
         '.mp3': 'MP3 Audio',
         '.wav': 'WAV Audio',
@@ -150,7 +164,7 @@ def get_audio_formats() -> Dict[str, str]:
 
 
 def get_file_size_mb(filepath: str) -> float:
-    """Vrati veličinu fajla u MB"""
+    """Vrati veliÄinu fajla u MB"""
     try:
         size_bytes = Path(filepath).stat().st_size
         return size_bytes / (1024 * 1024)
@@ -164,7 +178,7 @@ def is_valid_audio_file(filepath: str) -> bool:
         return False
     
     try:
-        # Pokušaj da otvoriš fajl da vidiš da li je validan
+        # PokuÅ¡aj da otvoriÅ¡ fajl da vidiÅ¡ da li je validan
         audio = mutagen.File(filepath, easy=True)
         return audio is not None
     except:
@@ -196,7 +210,7 @@ def get_audio_info_summary(filepath: str) -> str:
         if metadata.get("bitrate", 0) > 0:
             info_parts.append(f"Bitrate: {metadata['bitrate'] // 1000} kbps")
         
-        return " • ".join(info_parts)
+        return " â€¢ ".join(info_parts)
         
     except Exception as e:
         return f"Error: {str(e)}"

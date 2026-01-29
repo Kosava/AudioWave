@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # ui/panels/playlist_operations.py
 # Playlist operations: add, remove, clear, drag & drop
 
@@ -56,23 +57,105 @@ class PlaylistOperationsManager:
                 QMessageBox.information(self.playlist_panel, "No Audio Files", 
                     "No audio files found in the selected folder.")
     
+    def add_url(self):
+        """Add URL (radio stream) to playlist"""
+        from PyQt6.QtWidgets import QInputDialog, QLineEdit
+        
+        # Dialog za unos URL-a
+        url, ok = QInputDialog.getText(
+            self.playlist_panel,
+            "Add Stream URL",
+            "Enter stream URL (radio station or audio stream):",
+            QLineEdit.EchoMode.Normal,
+            "https://"
+        )
+        
+        if ok and url and url.strip():
+            url = url.strip()
+            
+            # Provera da li URL počinje sa http:// ili https://
+            if not url.startswith(('http://', 'https://', 'mms://', 'rtsp://')):
+                QMessageBox.warning(
+                    self.playlist_panel,
+                    "Invalid URL",
+                    "URL must start with http://, https://, mms://, or rtsp://"
+                )
+                return
+            
+            # Dialog za opciono unos imena stanice
+            name, ok2 = QInputDialog.getText(
+                self.playlist_panel,
+                "Stream Name",
+                "Enter a name for this stream (optional):",
+                QLineEdit.EchoMode.Normal,
+                ""
+            )
+            
+            if ok2:
+                if self.playlist_panel.playlist_manager:
+                    # Ako je dato ime, kreiraj custom display name
+                    # PlaylistManager će direktno dodati URL kao fajl
+                    self.playlist_panel.playlist_manager.add_files([url])
+                    
+                    if name and name.strip():
+                        # Sačuvaj custom ime za ovaj URL u metadata cache
+                        # (ovo će delegate koristiti za prikaz)
+                        display_name = f"📻 {name.strip()}"
+                    else:
+                        # Ekstraktuj ime iz URL-a
+                        from urllib.parse import urlparse
+                        parsed = urlparse(url)
+                        domain = parsed.netloc or "Stream"
+                        display_name = f"📻 {domain}"
+                    
+                    self.playlist_panel.show_status_message(f"Added stream: {display_name}")
+                else:
+                    QMessageBox.warning(
+                        self.playlist_panel,
+                        "Error",
+                        "Playlist manager not available"
+                    )
+    
     def clear_playlist(self):
         """Clear current playlist"""
         if not self.playlist_panel.playlist_manager:
+            print("⚠️ Clear playlist: No playlist manager available")
             return
         
-        current_playlist = self.playlist_panel.playlist_selector.currentText().replace("🎵 ", "")
+        # Uzmi ime trenutne plejliste (ukloni emoji prefiks)
+        current_playlist = self.playlist_panel.playlist_selector.currentText().replace("♪ ", "")
         track_count = len(self.playlist_panel.playlist_manager.current_playlist)
         
+        print(f"🗑️ Clear playlist requested: '{current_playlist}' ({track_count} tracks)")
+        
+        # Potvrdi brisanje sa korisnikom
         reply = QMessageBox.question(
             self.playlist_panel, "Clear Playlist",
-            f"Clear all {track_count} tracks?",
+            f"Clear all {track_count} tracks from '{current_playlist}'?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
         )
         
         if reply == QMessageBox.StandardButton.Yes:
-            self.playlist_panel.playlist_manager.clear_playlist(current_playlist)
-            self.playlist_panel.show_status_message(f"Cleared {current_playlist}")
+            print(f"✅ User confirmed - clearing playlist '{current_playlist}'")
+            
+            # Pozovi clear_playlist metodu na playlist manager-u
+            success = self.playlist_panel.playlist_manager.clear_playlist(current_playlist)
+            
+            if success:
+                print(f"✅ Playlist '{current_playlist}' successfully cleared")
+                
+                # KRITIČNO: Eksplicitno osvež UI da prikaže praznu listu
+                self.playlist_panel.load_current_playlist()
+                self.playlist_panel.show_status_message(f"Cleared {current_playlist}")
+            else:
+                print(f"❌ Failed to clear playlist '{current_playlist}'")
+                QMessageBox.warning(
+                    self.playlist_panel,
+                    "Error",
+                    f"Failed to clear playlist '{current_playlist}'"
+                )
+        else:
+            print(f"❌ User cancelled clear operation")
     
     def remove_selected(self):
         """Remove selected items from playlist"""
@@ -142,7 +225,7 @@ class PlaylistOperationsManager:
                     else:
                         msg = f"Added {len(files_to_add)} files"
                     
-                    self.playlist_panel.show_status_message(f"🎵 {msg}")
+                    self.playlist_panel.show_status_message(f"♪ {msg}")
             else:
                 self.playlist_panel.show_status_message("⚠️ No audio files found", 2000)
             
