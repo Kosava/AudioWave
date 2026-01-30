@@ -1,29 +1,68 @@
+############################
 # Python
+############################
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-*.so
-*.egg-info/
 
-# Virtualenv
+############################
+# Virtual environments
+############################
+.venv/
 venv/
-.env
+env/
+ENV/
 
-# Build artifacts
+############################
+# Build / packaging
+############################
 build/
 dist/
+*.egg-info/
+*.spec
+*.deb
+*.rpm
+*.AppImage
 
+############################
+# Temporary / backup files
+############################
+*.tmp
+*.temp
+*.swp
+*.swo
+*.bak
+*~
+*.orig
+
+############################
 # Logs
+############################
 *.log
 
+############################
 # OS junk
+############################
 .DS_Store
 Thumbs.db
 
-# IDE
-.idea/
+############################
+# Editors / IDEs
+############################
 .vscode/
+.idea/
+*.kate-swp
+*.sublime-workspace
+*.sublime-project
 
-# Runtime data
-data/
+############################
+# Runtime / cache
+############################
+.cache/
+cache/
+
+############################
+# Configs (local only)
+############################
+config.json
