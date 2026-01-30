@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# Resolve real path of this script
+HERE="$(dirname "$(readlink -f "$0")")"
+
+if [ -n "$APPDIR" ]; then
+    # AppImage runtime
+    BASEDIR="$APPDIR/usr/lib/audiowave"
+else
+    # Dev / system fallback (project root)
+    BASEDIR="$(cd "$HERE/.." && pwd)"
+fi
+
+cd "$BASEDIR" || {
+    echo "❌ AudioWave: cannot cd into $BASEDIR"
+    exit 1
+}
+
+exec python3 audiowave.py "$@"

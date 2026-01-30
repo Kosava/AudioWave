@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "audiowave"
+version = "0.3.2"
+description = "Modern desktop audio player written in Python"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+authors = [
+  { name = "Kosava", email = "kosava@gmail.com" }
+]
+
+dependencies = [
+  "PyQt6",
+  "mutagen"
+]
+
+[project.scripts]
+audiowave = "audiowave:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["venv*", "__pycache__*", "packaging*", "data*"]
+
+[tool.setuptools.package-data]
+audiowave = [
+  "resources/**/*",
+  "ui/themes/themes.json"
+]

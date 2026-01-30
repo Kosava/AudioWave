@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=AudioWave
+Exec=audiowave
+Icon=audiowave
+Comment=Modern desktop audio player
+Categories=AudioVideo;Player;
+Terminal=false

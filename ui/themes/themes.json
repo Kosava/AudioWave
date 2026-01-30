@@ -1,0 +1,64 @@
+{
+  "_comment": "Custom themes for TrayWave Player - Add your own themes here!",
+  "_instructions": "Each theme should have a 'stylesheet' key with Qt CSS",
+  
+  "Nord": {
+    "name": "🌨️ Nord",
+    "description": "Arctic, north-bluish color palette",
+    "stylesheet": "QMainWindow, QDialog { background-color: #2e3440; color: #eceff4; } QWidget { background-color: transparent; color: #eceff4; font-family: 'Segoe UI', Arial; } QFrame { background-color: rgba(46, 52, 64, 0.8); border-radius: 12px; border: 1px solid rgba(136, 192, 208, 0.3); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5e81ac, stop:0.5 #81a1c1, stop:1 #88c0d0); border: none; } QFrame#topSection { background: rgba(94, 129, 172, 0.15); border: 1px solid rgba(136, 192, 208, 0.3); } QPushButton { background-color: rgba(94, 129, 172, 0.2); border: 1px solid #5e81ac; border-radius: 8px; color: #88c0d0; padding: 8px 16px; font-weight: 500; } QPushButton:hover { background-color: rgba(94, 129, 172, 0.35); border: 1px solid #81a1c1; } QListWidget { background: rgba(46, 52, 64, 0.7); border: 1px solid rgba(136, 192, 208, 0.2); border-radius: 8px; } QListWidget::item:selected { background: rgba(94, 129, 172, 0.4); color: #eceff4; } QLineEdit { background: rgba(59, 66, 82, 0.6); border: 1px solid rgba(136, 192, 208, 0.3); border-radius: 8px; padding: 10px 14px; color: #eceff4; } QSlider::sub-page:horizontal { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #5e81ac, stop:1 #88c0d0); }"
+  },
+  
+  "Dracula": {
+    "name": "🧛 Dracula",
+    "description": "Dark theme with vibrant colors",
+    "stylesheet": "QMainWindow, QDialog { background-color: #282a36; color: #f8f8f2; } QWidget { background-color: transparent; color: #f8f8f2; } QFrame { background-color: rgba(40, 42, 54, 0.9); border-radius: 12px; border: 1px solid rgba(189, 147, 249, 0.3); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #bd93f9, stop:0.5 #ff79c6, stop:1 #bd93f9); border: none; } QFrame#topSection { background: rgba(189, 147, 249, 0.1); border: 1px solid rgba(189, 147, 249, 0.3); } QPushButton { background-color: rgba(189, 147, 249, 0.15); border: 1px solid #bd93f9; border-radius: 8px; color: #ff79c6; padding: 8px 16px; } QPushButton:hover { background-color: rgba(189, 147, 249, 0.3); } QListWidget::item:selected { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 rgba(189, 147, 249, 0.5), stop:1 rgba(255, 121, 198, 0.5)); } QSlider::sub-page:horizontal { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #bd93f9, stop:1 #ff79c6); }"
+  },
+  
+  "Monokai": {
+    "name": "🎨 Monokai",
+    "description": "Warm and vibrant coding theme",
+    "stylesheet": "QMainWindow, QDialog { background-color: #272822; color: #f8f8f2; } QWidget { background-color: transparent; color: #f8f8f2; font-family: 'Consolas', monospace; } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #a6e22e, stop:0.3 #66d9ef, stop:0.7 #f92672, stop:1 #fd971f); border: none; } QPushButton { background-color: rgba(166, 226, 46, 0.2); border: 1px solid #a6e22e; border-radius: 6px; color: #a6e22e; padding: 8px 16px; font-weight: bold; } QPushButton:hover { background-color: rgba(166, 226, 46, 0.35); } QListWidget::item:selected { background: rgba(102, 217, 239, 0.3); color: #66d9ef; border-left: 3px solid #f92672; }"
+  },
+  
+  "Solarized Dark": {
+    "name": "☀️ Solarized Dark",
+    "description": "Precision colors for machines and people",
+    "stylesheet": "QMainWindow, QDialog { background-color: #002b36; color: #839496; } QWidget { background-color: transparent; color: #839496; } QFrame { background-color: rgba(0, 43, 54, 0.9); border: 1px solid rgba(42, 161, 152, 0.3); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #268bd2, stop:0.5 #2aa198, stop:1 #859900); border: none; } QPushButton { background-color: rgba(38, 139, 210, 0.15); border: 1px solid #268bd2; border-radius: 8px; color: #2aa198; padding: 8px 16px; } QListWidget::item:selected { background: rgba(42, 161, 152, 0.3); color: #93a1a1; } QSlider::sub-page:horizontal { background: #268bd2; }"
+  },
+  
+  "Gruvbox": {
+    "name": "🍂 Gruvbox",
+    "description": "Retro groove warm theme",
+    "stylesheet": "QMainWindow, QDialog { background-color: #282828; color: #ebdbb2; } QWidget { background-color: transparent; color: #ebdbb2; } QFrame { background-color: rgba(40, 40, 40, 0.9); border: 1px solid rgba(251, 184, 108, 0.3); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #fb4934, stop:0.3 #fabd2f, stop:0.7 #b8bb26, stop:1 #83a598); border: none; } QPushButton { background-color: rgba(251, 184, 108, 0.2); border: 1px solid #fabd2f; border-radius: 8px; color: #fabd2f; padding: 8px 16px; } QPushButton:hover { background-color: rgba(251, 184, 108, 0.35); } QListWidget::item:selected { background: rgba(184, 187, 38, 0.3); color: #ebdbb2; }"
+  },
+  
+  "Material Dark": {
+    "name": "📱 Material Dark",
+    "description": "Google Material Design dark theme",
+    "stylesheet": "QMainWindow, QDialog { background-color: #212121; color: #ffffff; } QWidget { background-color: transparent; color: #ffffff; font-family: 'Roboto', 'Segoe UI'; } QFrame { background-color: rgba(33, 33, 33, 0.95); border-radius: 8px; border: 1px solid rgba(66, 66, 66, 0.5); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #3f51b5, stop:1 #2196f3); border: none; } QPushButton { background-color: #3f51b5; border: none; border-radius: 4px; color: white; padding: 10px 20px; font-weight: 500; text-transform: uppercase; } QPushButton:hover { background-color: #5c6bc0; } QListWidget { background: #303030; border: none; border-radius: 4px; } QListWidget::item:selected { background: #3f51b5; color: white; } QLineEdit { background: #424242; border: none; border-bottom: 2px solid #3f51b5; border-radius: 0; padding: 8px; color: white; } QSlider::sub-page:horizontal { background: #3f51b5; }"
+  },
+  
+  "Tokyo Night": {
+    "name": "🌃 Tokyo Night",
+    "description": "Clean dark theme for the city lights",
+    "stylesheet": "QMainWindow, QDialog { background-color: #1a1b26; color: #a9b1d6; } QWidget { background-color: transparent; color: #a9b1d6; } QFrame { background-color: rgba(26, 27, 38, 0.95); border-radius: 12px; border: 1px solid rgba(122, 162, 247, 0.3); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7aa2f7, stop:0.5 #bb9af7, stop:1 #7dcfff); border: none; } QPushButton { background-color: rgba(122, 162, 247, 0.15); border: 1px solid #7aa2f7; border-radius: 8px; color: #7dcfff; padding: 8px 16px; } QPushButton:hover { background-color: rgba(122, 162, 247, 0.3); } QListWidget::item:selected { background: rgba(122, 162, 247, 0.3); color: #c0caf5; } QSlider::sub-page:horizontal { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #7aa2f7, stop:1 #bb9af7); }"
+  },
+  
+  "Catppuccin Mocha": {
+    "name": "☕ Catppuccin Mocha",
+    "description": "Soothing pastel theme",
+    "stylesheet": "QMainWindow, QDialog { background-color: #1e1e2e; color: #cdd6f4; } QWidget { background-color: transparent; color: #cdd6f4; } QFrame { background-color: rgba(30, 30, 46, 0.95); border-radius: 12px; border: 1px solid rgba(137, 180, 250, 0.3); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #89b4fa, stop:0.5 #cba6f7, stop:1 #f5c2e7); border: none; } QPushButton { background-color: rgba(137, 180, 250, 0.15); border: 1px solid #89b4fa; border-radius: 8px; color: #89dceb; padding: 8px 16px; } QPushButton:hover { background-color: rgba(137, 180, 250, 0.3); } QListWidget::item:selected { background: rgba(137, 180, 250, 0.3); color: #cdd6f4; } QSlider::sub-page:horizontal { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #89b4fa, stop:1 #cba6f7); }"
+  },
+  
+  "Ayu Dark": {
+    "name": "🌊 Ayu Dark",
+    "description": "Simple, bright and elegant theme",
+    "stylesheet": "QMainWindow, QDialog { background-color: #0f1419; color: #bfbdb6; } QWidget { background-color: transparent; color: #bfbdb6; } QFrame { background-color: rgba(15, 20, 25, 0.95); border-radius: 12px; border: 1px solid rgba(89, 174, 255, 0.3); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #59c2ff, stop:0.5 #ffb454, stop:1 #95e6cb); border: none; } QPushButton { background-color: rgba(89, 194, 255, 0.15); border: 1px solid #59c2ff; border-radius: 8px; color: #59c2ff; padding: 8px 16px; } QPushButton:hover { background-color: rgba(89, 194, 255, 0.3); } QListWidget::item:selected { background: rgba(89, 194, 255, 0.25); color: #e6e1cf; }"
+  },
+  
+  "One Dark": {
+    "name": "⚫ One Dark",
+    "description": "Atom's iconic One Dark theme",
+    "stylesheet": "QMainWindow, QDialog { background-color: #282c34; color: #abb2bf; } QWidget { background-color: transparent; color: #abb2bf; } QFrame { background-color: rgba(40, 44, 52, 0.95); border-radius: 12px; border: 1px solid rgba(97, 175, 239, 0.3); } QFrame#headerGradient { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #61afef, stop:0.5 #c678dd, stop:1 #e06c75); border: none; } QPushButton { background-color: rgba(97, 175, 239, 0.15); border: 1px solid #61afef; border-radius: 8px; color: #61afef; padding: 8px 16px; } QPushButton:hover { background-color: rgba(97, 175, 239, 0.3); } QListWidget::item:selected { background: rgba(97, 175, 239, 0.3); color: #abb2bf; } QSlider::sub-page:horizontal { background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #61afef, stop:1 #c678dd); }"
+  }
+}

@@ -1,0 +1,11 @@
+Package: audiowave
+Version: 0.3.2
+Section: sound
+Priority: optional
+Architecture: amd64
+Maintainer: Alen <alen@example.com>
+Homepage: https://github.com/Kosava/AudioWave
+Depends: python3 (>= 3.10), python3-pyqt6, python3-mutagen, python3-requests, python3-pil, python3-numpy, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav
+Description: Lightweight modular audio player
+ AudioWave is a fast, plugin-based audio player with a modern UI,
+ tray support, and streaming capabilities.
