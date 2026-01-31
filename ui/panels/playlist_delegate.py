@@ -34,6 +34,20 @@ class WinampPlaylistItemDelegate(QStyledItemDelegate):
         
         rect = option.rect
         
+        # Get active track for highlighting
+        panel = getattr(self, "playlist_panel", None)
+        active = None
+        if panel:
+            active = panel.get_current_highlighted_file()
+        
+        filepath = index.data(Qt.ItemDataRole.UserRole)
+        
+        # Draw active track highlight
+        if active and filepath:
+            import os
+            if os.path.normpath(os.path.abspath(filepath)) == active:
+                painter.fillRect(option.rect, QColor(74, 110, 224, 80))
+        
         # Draw selection background if needed
         if option.state & QStyle.StateFlag.State_Selected:
             painter.fillRect(rect, option.palette.highlight())
@@ -43,7 +57,6 @@ class WinampPlaylistItemDelegate(QStyledItemDelegate):
             painter.setPen(option.palette.text().color())
             time_color = QColor(150, 150, 150)
 
-        filepath = index.data(Qt.ItemDataRole.UserRole)
         if not filepath:
             painter.restore()
             return

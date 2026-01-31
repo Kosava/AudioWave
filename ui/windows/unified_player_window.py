@@ -517,16 +517,12 @@ class UnifiedPlayerWindow(QMainWindow):
     
     def on_playlist_play_requested(self, file_path):
         """Handle play request from playlist"""
-        try:
-            if self._last_highlighted_file != file_path:
-                if hasattr(self.playlist_panel, 'highlight_file'):
-                    self.playlist_panel.highlight_file(file_path)
-                self._last_highlighted_file = file_path
-            
-            if hasattr(self.engine, 'play_file'):
-                self.engine.play_file(file_path)
-        except Exception as e:
-            print(f"Error playing file: {e}")
+
+        if hasattr(self.playlist_panel, "highlight_current_track"):
+            self.playlist_panel.highlight_current_track(file_path)
+
+        if hasattr(self.engine, "play_file"):
+            self.engine.play_file(file_path)
     
     def on_playlist_changed(self, playlist_name):
         """Handle playlist change"""
@@ -537,17 +533,21 @@ class UnifiedPlayerWindow(QMainWindow):
         except Exception as e:
             print(f"Error handling playlist change: {e}")
     
-    def on_playback_started(self):
+    def on_playback_started(self, filepath: str):
         """Handle playback started event"""
-        try:
-            if hasattr(self.player_window, 'on_playback_started'):
-                self.player_window.on_playback_started()
-            if hasattr(self.tray_notifications, 'playback_state_changed'):
-                self.tray_notifications.playback_state_changed(True)
-            # NOVO: Azuriraj tray menu Play/Pause tekst
-            self._update_tray_menu_playing_state(True)
-        except Exception as e:
-            print(f"Error in playback started: {e}")
+
+        if hasattr(self.playlist_panel, "highlight_current_track"):
+            self.playlist_panel.highlight_current_track(filepath)
+
+        self._last_highlighted_file = filepath
+
+        if hasattr(self.player_window, 'on_playback_started'):
+            self.player_window.on_playback_started()
+
+        if hasattr(self.tray_notifications, 'playback_state_changed'):
+            self.tray_notifications.playback_state_changed(True)
+
+        self._update_tray_menu_playing_state(True)
     
     def on_playback_stopped(self):
         """Handle playback stopped event"""
@@ -910,6 +910,27 @@ class UnifiedPlayerWindow(QMainWindow):
             return
 
         print(f"▶️ Restoring: {track} @ {position}ms")
+
+        # ▶️ Highlight track in playlist
+        if track:
+            # Try using index first
+            if index is not None and hasattr(self.playlist_panel, 'set_current_index'):
+                try:
+                    self.playlist_panel.set_current_index(index)
+                    print(f"✅ [Resume] Highlighted track by index: {index}")
+                except Exception as e:
+                    print(f"[WARN] Could not highlight by index: {e}")
+                    # Fallback to file path
+                    if hasattr(self.playlist_panel, 'highlight_file'):
+                        self.playlist_panel.highlight_file(track)
+                        print(f"✅ [Resume] Highlighted track by path: {track}")
+            # Use file path if index is not available
+            elif hasattr(self.playlist_panel, 'highlight_file'):
+                self.playlist_panel.highlight_file(track)
+                print(f"✅ [Resume] Highlighted track by path: {track}")
+        
+        # Track last highlighted file to prevent duplicates
+        self._last_highlighted_file = track
 
         # ▶️ Pusti fajl DIREKTNO preko engine-a
         if hasattr(self.engine, "play_file"):

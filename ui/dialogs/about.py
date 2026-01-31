@@ -17,7 +17,7 @@ from PyQt6.QtCore import QUrl
 
 
 # ===== APLIKACIONE KONSTANTE =====
-APP_VERSION = "0.3.1"
+APP_VERSION = "0.3.3"
 APP_NAME = "AudioWave"
 APP_DESCRIPTION = "Modern desktop music player with theme support"
 AUTHOR_NAME = "Košava"

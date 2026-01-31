@@ -26,7 +26,7 @@ try:
     SVG_ICONS_AVAILABLE = True
 except ImportError:
     SVG_ICONS_AVAILABLE = False
-    print('Ã¢šÂ Ã¯Â¸Â SVG Icon Manager not available, using text fallback')
+    print('⚠️ SVG Icon Manager not available, using text fallback')
 
 # Import audio utils
 try:
@@ -34,7 +34,7 @@ try:
     AUDIO_UTILS_AVAILABLE = True
 except ImportError as e:
     AUDIO_UTILS_AVAILABLE = False
-    print(f'Ã¢šÂ Ã¯Â¸Â Audio utils not available: {e}')
+    print(f'⚠️ Audio utils not available: {e}')
 
 # Import MetadataReader
 try:
@@ -42,7 +42,7 @@ try:
     METADATA_READER_AVAILABLE = True
 except ImportError as e:
     METADATA_READER_AVAILABLE = False
-    print(f'Ã¢šÂ Ã¯Â¸Â MetadataReader not available: {e}')
+    print(f'⚠️ MetadataReader not available: {e}')
 
 
 class PlaylistPanel(QWidget):
@@ -93,7 +93,7 @@ class PlaylistPanel(QWidget):
         self._pending_refresh = False
         self._current_highlighted_file = None
         
-        # Ã¢Å“â€ Highlight debounce - prevents rapid duplicate highlights
+        # ⚡ Highlight debounce - prevents rapid duplicate highlights
         self._highlight_debounce_timer = QTimer()
         self._highlight_debounce_timer.setSingleShot(True)
         self._highlight_debounce_timer.setInterval(50)  # 50ms debounce
@@ -177,7 +177,7 @@ class PlaylistPanel(QWidget):
             self.delete_playlist_btn.setIcon(icon)
             self.delete_playlist_btn.setIconSize(QSize(20, 20))
         else:
-            self.delete_playlist_btn.setText("ÃƒÆ’Ã¢â‚¬â€")
+            self.delete_playlist_btn.setText("—")
         
         self.settings_btn = QPushButton()
         self.settings_btn.setObjectName("settingsButton")
@@ -189,7 +189,7 @@ class PlaylistPanel(QWidget):
             self.settings_btn.setIcon(icon)
             self.settings_btn.setIconSize(QSize(20, 20))
         else:
-            self.settings_btn.setText("Ã¢šâ„¢")
+            self.settings_btn.setText("⚙")
         
         toolbar_layout.addWidget(self.new_playlist_btn)
         toolbar_layout.addWidget(self.playlist_selector, 1)
@@ -244,7 +244,7 @@ class PlaylistPanel(QWidget):
             self.clear_btn.setIcon(icon_clear)
             self.clear_btn.setIconSize(QSize(18, 18))
         else:
-            self.clear_btn.setText("ÃƒÆ’Ã¢â‚¬â€ Clear Playlist")
+            self.clear_btn.setText("— Clear Playlist")
         self.clear_btn.clicked.connect(self.clear_playlist)
         
         self.status_label = QLabel("Ready • 0 tracks • 0:00")
@@ -378,7 +378,7 @@ class PlaylistPanel(QWidget):
         
         if self.playlist_manager:
             self.delegate.clear_cache()
-            # Direktno uÃƒâ€žÃ‚ÂÃƒâ€šÃ‚Âitaj listu umesto poziva refresh_list koji proverava _is_loading
+            # Direktno učitaj listu umesto poziva refresh_list koji proverava _is_loading
             self._do_refresh_list(self.playlist_manager.current_playlist)
             self.update_status_bar()
             self._metadata_preload_timer.start(1000)
@@ -450,87 +450,23 @@ class PlaylistPanel(QWidget):
             self.play_requested.emit(filepath)
 
     def highlight_current_track(self, filepath=None):
-        """Highlight the currently playing track - WITH DEBOUNCE"""
+        """Highlight the currently playing track"""
         import os
-        
-        # Normalize filepath for comparison
-        if filepath:
-            filepath = os.path.normpath(os.path.abspath(filepath))
-        
-        # Skip if same file already highlighted
+
+        if not filepath:
+            return
+
+        filepath = os.path.normpath(os.path.abspath(filepath))
+
         if filepath == self._current_highlighted_file:
             return
-        
-        # Ã¢Å“â€ Debounce: If called too quickly, schedule for later
-        current_time = time.time()
-        if current_time - self._last_highlight_time < 0.05:  # 50ms
-            self._pending_highlight_file = filepath
-            self._highlight_debounce_timer.stop()
-            # Safely disconnect if connected
-            try:
-                if self._highlight_debounce_timer.receivers(self._highlight_debounce_timer.timeout) > 0:
-                    self._highlight_debounce_timer.timeout.disconnect()
-            except:
-                pass
-            self._highlight_debounce_timer.timeout.connect(lambda: self._do_highlight(self._pending_highlight_file))
-            self._highlight_debounce_timer.start()
-            return
-        
-        self._do_highlight(filepath)
-    
-    def _do_highlight(self, filepath):
-        """Actually perform the highlight - internal method"""
-        import os
-        
-        # Normalize again just in case
-        if filepath:
-            filepath = os.path.normpath(os.path.abspath(filepath))
-        
-        # Double-check we're not highlighting the same file
-        if filepath == self._current_highlighted_file:
-            return
-        
-        self._last_highlight_time = time.time()
-        
-        # Clear all highlights
-        for row in range(self.file_list.count()):
-            item = self.file_list.item(row)
-            if item:
-                item.setBackground(QBrush())
-                item.setForeground(QBrush())
-        
-        # Update current highlighted file
+
         self._current_highlighted_file = filepath
-        
-        # Find and highlight current track
-        if filepath:
-            for row in range(self.file_list.count()):
-                item = self.file_list.item(row)
-                if item:
-                    item_path = item.data(Qt.ItemDataRole.UserRole)
-                    if item_path:
-                        # Normalize item path for comparison
-                        item_path_normalized = os.path.normpath(os.path.abspath(item_path))
-                        if item_path_normalized == filepath:
-                            # Apply highlight color
-                            highlight_color = QColor(74, 110, 224, 80)
-                            item.setBackground(QBrush(highlight_color))
-                            item.setForeground(QBrush(QColor(255, 255, 255)))
-                            
-                            # NO SCROLL - user controls scroll position!
-                            # NO setCurrentRow - don't change selection!
-                            
-                            # Update status
-                            track_name = Path(filepath).stem
-                            if hasattr(self, 'delegate'):
-                                display_name = self.delegate.get_display_name_cached(filepath)
-                                if display_name:
-                                    track_name = display_name
-                            
-                            self.status_label.setText(f"▶ Playing: {track_name}")
-                            QTimer.singleShot(3000, self.update_status_bar)
-                            break
-    
+
+        # Forsiraj repaint delegate-a
+        self.file_list.viewport().update()
+        self.file_list.update()
+
     def on_current_index_changed(self, index):
         """Handle current index change from playlist manager"""
         if index >= 0 and hasattr(self.playlist_manager, 'current_playlist'):
@@ -548,7 +484,7 @@ class PlaylistPanel(QWidget):
             if 'title' in metadata and metadata['title']:
                 track_name = metadata['title']
             
-            self.show_status_message(f"Ã¢Å“â€ Tags saved: {track_name}", 3000)
+            self.show_status_message(f"⚡ Tags saved: {track_name}", 3000)
             
             if hasattr(self.app, 'engine'):
                 if self.app.engine.current_file == filepath:
@@ -701,7 +637,7 @@ class PlaylistPanel(QWidget):
             self.playlist_selector.setCurrentIndex(index)
             self.delete_playlist_btn.setEnabled(playlist_name != "Default Playlist")
         
-        # KRITIÃ„Å’NO: OsveÃ…Â¾i listu da prikaÃ…Â¾e promene (npr. obrisane pesme)
+        # KRITIČNO: Osveži listu da prikaže promene (npr. obrisane pesme)
         self.load_current_playlist()
 
     def on_current_playlist_changed(self):
@@ -730,9 +666,10 @@ class PlaylistPanel(QWidget):
     def get_current_highlighted_file(self):
         """Get the currently highlighted file"""
         return self._current_highlighted_file
+
     def apply_theme(self, theme_name: str = None):
         """
-        AÃƒâ€¦Ã‚Â¾urira ikone prema trenutnoj temi.
+        Ažurira ikone prema trenutnoj temi.
         Poziva se kada se tema promeni.
         """
         # Detektuj boju iz teme
@@ -748,11 +685,11 @@ class PlaylistPanel(QWidget):
         except:
             pass
         
-        # AÃƒâ€¦Ã‚Â¾uriraj sve ikone
+        # Ažuriraj sve ikone
         self._update_button_icons()
     
     def _update_button_icons(self):
-        """AÃƒâ€¦Ã‚Â¾urira ikone na svim dugmadima."""
+        """Ažurira ikone na svim dugmadima."""
         if not SVG_ICONS_AVAILABLE:
             return
         
