@@ -4,6 +4,10 @@
 Settings dialog - SA Audio Backend opcijama, Player Style, About i Plugins tabovima
 
 Kompletan settings dialog za AudioWave Player.
+
+NOVE OPCIJE:
+✅ Minimize to tray on close (checkbox u Playback tabu)
+✅ Resume playback position (checkbox u Playback tabu)
 """
 
 from PyQt6.QtWidgets import (
@@ -26,7 +30,7 @@ try:
     )
 except ImportError:
     APP_NAME = "AudioWave"
-    APP_VERSION = "0.3.0"
+    APP_VERSION = "0.3.3"
     APP_DESCRIPTION = "Modern desktop music player with theme support"
     AUTHOR_NAME = "Košava"
     AUTHOR_GITHUB = "https://github.com/Kosava"
@@ -57,6 +61,19 @@ except ImportError:
         return "qt_multimedia"
     def check_engine_availability(engine_id):
         return engine_id == "qt_multimedia"
+
+# Import Config za tray i resume settings
+try:
+    from core.config import Config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    class Config:
+        def __init__(self): pass
+        def get_tray_settings(self): return {"minimize_to_tray": True}
+        def set_tray_settings(self, s): pass
+        def is_resume_playback_enabled(self): return False
+        def set_resume_playback_enabled(self, e): pass
 
 
 # ===== AUDIO BACKEND DETEKCIJA =====
@@ -288,11 +305,17 @@ class SettingsDialog(QDialog):
         else:
             self.plugin_manager = None
         
+        # ✅ FIX: koristi ISTU config instancu iz aplikacije
+        if hasattr(parent, 'app') and hasattr(parent.app, 'config'):
+            self.config = parent.app.config
+        else:
+            self.config = None
+        
         self.setup_ui()
-        # âœ“ REPLACED: Theme-aware styling instead of hardcoded dark
+        # ✅ REPLACED: Theme-aware styling instead of hardcoded dark
         self.apply_theme_stylesheet()
         
-        # âœ“ NOVO: UÃ„ÂÃ‚Âitaj saÃ„ÂÃ‚Âuvanu preferenciju audio backend-a
+        # ✅ NOVO: Učitaj sačuvanu preferenciju audio backend-a
         self._load_saved_backend_preference()
         
     def setup_ui(self):
@@ -354,17 +377,17 @@ class SettingsDialog(QDialog):
     
     def _load_saved_backend_preference(self):
         """
-        âœ“ NOVO: UÃ„ÂÃ‚Âitaj saÃ„ÂÃ‚Âuvanu preferenciju audio backend-a i postavi combo box
+        ✅ NOVO: Učitaj sačuvanu preferenciju audio backend-a i postavi combo box
         """
         try:
             saved_backend = load_engine_preference()
             print(f"[Settings] Loading saved backend preference: {saved_backend}")
             
-            # PronaÃ„ÂÃ¢â‚¬Ëœi index u combo box-u po data vrednosti
+            # Pronađi index u combo box-u po data vrednosti
             for i in range(self.backend_combo.count()):
                 if self.backend_combo.itemData(i) == saved_backend:
                     self.backend_combo.setCurrentIndex(i)
-                    print(f"âœ“ [Settings] Backend combo set to index {i}: {saved_backend}")
+                    print(f"✅ [Settings] Backend combo set to index {i}: {saved_backend}")
                     break
             else:
                 print(f"[Settings] Saved backend '{saved_backend}' not found in combo, using default")
@@ -458,8 +481,8 @@ class SettingsDialog(QDialog):
         
         # Dodaj dostupne backend-ove
         for backend_id, info in self.available_backends.items():
-            status = "âœ“" if info["available"] else "âœ—"
-            eq_status = "" if info["has_eq"] else ""
+            status = "✅" if info["available"] else "❌"
+            eq_status = "🎛️" if info["has_eq"] else ""
             display_text = f"{info['icon']} {info['name']} {eq_status} {status}"
             self.backend_combo.addItem(display_text, backend_id)
             
@@ -482,7 +505,7 @@ class SettingsDialog(QDialog):
         self.backend_desc_label.setWordWrap(True)
         backend_layout.addWidget(self.backend_desc_label)
         
-        # AÃ…Â¾uriraj opis
+        # Ažuriraj opis
         self._on_backend_changed(0)
         
         layout.addWidget(group_backend)
@@ -518,7 +541,7 @@ class SettingsDialog(QDialog):
         self.device_combo = QComboBox()
         self.device_combo.addItem("System Default")
         
-        # TODO: Popuni sa stvarnim ureÃ„â€˜ajima iz backend-a
+        # TODO: Popuni sa stvarnim uređajima iz backend-a
         
         self.refresh_devices_btn = QPushButton("Refresh")
         self.refresh_devices_btn.setFixedWidth(80)
@@ -542,7 +565,7 @@ class SettingsDialog(QDialog):
         if backend_id and backend_id in self.available_backends:
             info = self.available_backends[backend_id]
             
-            eq_text = "âœ“ Equalizer supported" if info["has_eq"] else "âœ— No EQ support"
+            eq_text = "✅ Equalizer supported" if info["has_eq"] else "❌ No EQ support"
             status_text = "Available" if info["available"] else "Not installed"
             
             self.backend_desc_label.setText(
@@ -553,7 +576,7 @@ class SettingsDialog(QDialog):
             )
     
     def _refresh_audio_devices(self):
-        """OsveÃ…Â¾i listu audio ureÃ„â€˜aja"""
+        """Osveži listu audio uređaja"""
         # TODO: Implementirati za svaki backend
         QMessageBox.information(
             self, "Refresh Devices",
@@ -563,10 +586,13 @@ class SettingsDialog(QDialog):
         )
     
     def create_playback_tab(self):
-        """Playback settings"""
+        """
+        Playback settings - ✅ AŽURIRANO sa novim opcijama
+        """
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
+        # ===== PLAYBACK OPTIONS =====
         group = QGroupBox("Playback Options")
         form = QFormLayout(group)
         
@@ -594,6 +620,69 @@ class SettingsDialog(QDialog):
         form.addRow("Crossfade (sec):", self.crossfade_slider)
         
         layout.addWidget(group)
+        
+        # ===== ✅ NOVO: SYSTEM TRAY OPTIONS =====
+        group_tray = QGroupBox("System Tray")
+        form_tray = QFormLayout(group_tray)
+        
+        # Minimize to tray on close
+        self.minimize_to_tray_check = QCheckBox("Minimize to tray when closing window")
+        self.minimize_to_tray_check.setToolTip(
+            "When enabled, clicking the X button will minimize to system tray\n"
+            "instead of closing the application."
+        )
+        
+        # Učitaj trenutnu vrednost iz config-a
+        if self.config:
+            tray_settings = self.config.get_tray_settings()
+            self.minimize_to_tray_check.setChecked(
+                tray_settings.get("minimize_to_tray", True)
+            )
+        else:
+            self.minimize_to_tray_check.setChecked(True)
+        
+        form_tray.addRow(self.minimize_to_tray_check)
+        
+        # Info label za tray
+        tray_info = QLabel(
+            "💡 Tip: Left-click tray icon to show/hide window.\n"
+            "Right-click for menu with playback controls."
+        )
+        tray_info.setStyleSheet("color: #888; font-size: 10px; margin-top: 5px;")
+        form_tray.addRow(tray_info)
+        
+        layout.addWidget(group_tray)
+        
+        # ===== ✅ NOVO: RESUME PLAYBACK =====
+        group_resume = QGroupBox("Resume Playback")
+        form_resume = QFormLayout(group_resume)
+        
+        self.resume_playback_check = QCheckBox("Resume from last position on startup")
+        self.resume_playback_check.setToolTip(
+            "When enabled, the player will remember the last song and position\n"
+            "and continue from where you left off when you restart."
+        )
+        
+        # Učitaj trenutnu vrednost iz config-a
+        if self.config:
+            self.resume_playback_check.setChecked(
+                self.config.is_resume_playback_enabled()
+            )
+        else:
+            self.resume_playback_check.setChecked(False)
+        
+        form_resume.addRow(self.resume_playback_check)
+        
+        # Info label za resume
+        resume_info = QLabel(
+            "💡 The player will save your position when closing and\n"
+            "automatically load the last track when you start again."
+        )
+        resume_info.setStyleSheet("color: #888; font-size: 10px; margin-top: 5px;")
+        form_resume.addRow(resume_info)
+        
+        layout.addWidget(group_resume)
+        
         layout.addStretch()
         
         return tab
@@ -637,7 +726,7 @@ class SettingsDialog(QDialog):
         return tab
     
     def _on_plugin_toggled(self, plugin_id: str, enabled: bool):
-        """Kada se plugin ukljuÃ„ÂÃ‚Âi/iskljuÃ„ÂÃ‚Âi"""
+        """Kada se plugin uključi/isključi"""
         if self.plugin_manager:
             if enabled:
                 self.plugin_manager.enable_plugin(plugin_id)
@@ -694,6 +783,10 @@ class SettingsDialog(QDialog):
         self.volume_slider.setValue(70)
         self.remember_volume_check.setChecked(True)
         self.backend_combo.setCurrentIndex(0)
+        
+        # ✅ NOVO: Reset tray i resume opcija
+        self.minimize_to_tray_check.setChecked(True)
+        self.resume_playback_check.setChecked(False)
     
     def collect_settings(self):
         """Collect all settings"""
@@ -712,7 +805,10 @@ class SettingsDialog(QDialog):
             "playback": {
                 "autoplay": self.autoplay_check.isChecked(),
                 "shuffle": self.shuffle_check.isChecked(),
-                "loop_mode": self.loop_combo.currentText().lower()
+                "loop_mode": self.loop_combo.currentText().lower(),
+                # ✅ NOVO
+                "minimize_to_tray": self.minimize_to_tray_check.isChecked(),
+                "resume_playback": self.resume_playback_check.isChecked()
             },
             "plugins": {}
         }
@@ -733,7 +829,28 @@ class SettingsDialog(QDialog):
         if hasattr(self.parent_window, 'engine') and self.parent_window.engine:
             self.parent_window.engine.set_volume(settings["audio"]["default_volume"])
         
-        # Ã¢Å“â€¦ Proveri da li se backend ZAISTA promenio
+        # ✅ NOVO: Sačuvaj tray settings
+        if self.config:
+            tray_settings = self.config.get_tray_settings()
+            tray_settings["minimize_to_tray"] = settings["playback"]["minimize_to_tray"]
+            # Takođe ažuriraj close_to_tray da bude isti
+            tray_settings["close_to_tray"] = settings["playback"]["minimize_to_tray"]
+            self.config.set_tray_settings(tray_settings, auto_save=False)
+            
+            # Ažuriraj i u parent window ako postoji
+            if hasattr(self.parent_window, 'tray_settings'):
+                self.parent_window.tray_settings = tray_settings
+            
+            print(f"✅ [Settings] Minimize to tray: {settings['playback']['minimize_to_tray']}")
+        
+        # ✅ NOVO: Sačuvaj resume playback
+        if self.config:
+            self.config.set_resume_playback_enabled(
+                settings["playback"]["resume_playback"]
+            )
+            print(f"✅ [Settings] Resume playback: {settings['playback']['resume_playback']}")
+        
+        # ✅ Proveri da li se backend ZAISTA promenio
         current_backend = settings["audio"]["backend"]
         previous_backend = load_engine_preference()
         
@@ -743,9 +860,9 @@ class SettingsDialog(QDialog):
         print(f"   Changed:  {current_backend != previous_backend}")
         
         if current_backend and current_backend != previous_backend:
-            # Backend se promenio - saÃ„Âuvaj i prikaÃ…Â¾i poruku
+            # Backend se promenio - sačuvaj i prikaži poruku
             save_engine_preference(current_backend)
-            print(f"[SAVE] [Settings] Audio backend changed: {previous_backend} Ã¢â€ â€™ {current_backend}")
+            print(f"[SAVE] [Settings] Audio backend changed: {previous_backend} → {current_backend}")
             
             QMessageBox.information(
                 self, "Backend Changed",
@@ -754,7 +871,11 @@ class SettingsDialog(QDialog):
             )
         elif current_backend:
             # Backend isti kao pre - samo logujem
-            print(f"Ã¢â€žÂ¹Ã¯Â¸ [Settings] Audio backend unchanged: {current_backend}")
+            print(f"✔️ [Settings] Audio backend unchanged: {current_backend}")
+        
+        # Sačuvaj sve promene
+        if self.config:
+            self.config.save()
         
         self.settings_saved.emit(settings)
         self.accept()
@@ -787,7 +908,7 @@ class SettingsDialog(QDialog):
             )
             
             self.setStyleSheet(stylesheet)
-            print(f"âœ“ [SettingsDialog] Theme applied: {theme_name} (is_dark={is_dark})")
+            print(f"✅ [SettingsDialog] Theme applied: {theme_name} (is_dark={is_dark})")
         
         except Exception as e:
             print(f"[SettingsDialog] Could not apply theme: {e}")

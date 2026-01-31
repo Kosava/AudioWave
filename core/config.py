@@ -10,6 +10,7 @@ FEATURES:
 ✅ Volume and playback state persistence
 ✅ Tray settings persistence
 ✅ Auto-save on changes
+✅ Resume playback position persistence
 """
 
 import json
@@ -36,7 +37,7 @@ class Config:
         
         # Default configuration
         self.defaults = {
-            "version": "0.3.2",
+            "version": "0.3.3",
             
             # ✅ Theme settings - PERSISTENT
             "theme": "Dark Modern",  # Default theme
@@ -58,12 +59,21 @@ class Config:
             "last_file": None,
             "auto_play": True,
             
-            # Tray settings
+            # ✅ NOVO: Resume playback settings
+            "resume_playback": {
+                "enabled": False,           # Da li je opcija uključena
+                "last_track_path": None,    # Putanja do poslednje pesme
+                "last_position_ms": 0,      # Pozicija u milisekundama
+                "last_playlist_index": 0    # Index u playlisti
+            },
+            
+            # Tray settings - ✅ AŽURIRANO: minimize_to_tray je sada checkbox opcija
             "tray": {
                 "enabled": True,
-                "close_to_tray": True,
+                "close_to_tray": True,      # ✅ Ovo je sada kontrolisano iz Settings
+                "minimize_to_tray": True,   # ✅ NOVO: Minimize on X click
                 "notifications": True,
-                "icon_theme": "auto"  # auto | light | dark
+                "icon_theme": "auto"        # auto | light | dark
             },
             
             # Player style
@@ -90,7 +100,14 @@ class Config:
                 
                 # Merge with defaults (in case new keys were added)
                 config = self.defaults.copy()
-                config.update(loaded_config)
+                
+                # Deep merge za nested dictionaries
+                for key, value in loaded_config.items():
+                    if key in config and isinstance(config[key], dict) and isinstance(value, dict):
+                        # Merge nested dict
+                        config[key] = {**config[key], **value}
+                    else:
+                        config[key] = value
                 
                 print(f"✅ Config loaded successfully")
                 return config
@@ -187,10 +204,16 @@ class Config:
             tray = {
                 "enabled": True,
                 "close_to_tray": True,
+                "minimize_to_tray": True,
                 "notifications": True,
                 "icon_theme": "auto"
             }
             self.config["tray"] = tray
+        
+        # Osiguraj da postoje svi ključevi (za stare config fajlove)
+        if "minimize_to_tray" not in tray:
+            tray["minimize_to_tray"] = True
+        
         return tray
     
     def set_tray_settings(self, tray_settings: dict, auto_save: bool = True) -> None:
@@ -202,6 +225,107 @@ class Config:
             auto_save: Automatically save to file (default: True)
         """
         self.config["tray"] = tray_settings
+        
+        if auto_save:
+            self.save()
+    
+    # ===== RESUME PLAYBACK METHODS =====
+    
+    def get_resume_playback_settings(self) -> dict:
+        """
+        Get resume playback settings.
+        
+        Returns:
+            dict: Resume playback settings
+        """
+        resume = self.config.get("resume_playback")
+        if not isinstance(resume, dict):
+            resume = {
+                "enabled": False,
+                "last_track_path": None,
+                "last_position_ms": 0,
+                "last_playlist_index": 0
+            }
+            self.config["resume_playback"] = resume
+        print(f"🔍 [DEBUG] get_resume_playback_settings() = {resume}")
+        return resume
+    
+    def set_resume_playback_settings(self, settings: dict, auto_save: bool = True) -> None:
+        """
+        Set resume playback settings.
+        
+        Args:
+            settings: Resume playback settings dictionary
+            auto_save: Automatically save to file (default: True)
+        """
+        self.config["resume_playback"] = settings
+        
+        if auto_save:
+            self.save()
+    
+    def is_resume_playback_enabled(self) -> bool:
+        """Check if resume playback is enabled"""
+        resume = self.get_resume_playback_settings()
+        enabled = resume.get("enabled", False)
+        print(f"🔍 [DEBUG] is_resume_playback_enabled() = {enabled}")
+        print(f"🔍 [DEBUG] resume_playback config: {resume}")
+        return enabled
+    
+    def set_resume_playback_enabled(self, enabled: bool, auto_save: bool = True) -> None:
+        """Set resume playback enabled state"""
+        print(f"🔧 [DEBUG] set_resume_playback_enabled({enabled}, auto_save={auto_save})")
+        resume = self.get_resume_playback_settings()
+        resume["enabled"] = enabled
+        self.config["resume_playback"] = resume
+        print(f"🔧 [DEBUG] resume_playback after set: {self.config['resume_playback']}")
+        
+        if auto_save:
+            self.save()
+            print(f"🔧 [DEBUG] Config saved after set_resume_playback_enabled")
+    
+    def save_playback_position(self, track_path: str, position_ms: int, 
+                                playlist_index: int = 0, auto_save: bool = True) -> None:
+        """
+        Sačuvaj trenutnu poziciju pesme za resume.
+        
+        Args:
+            track_path: Putanja do pesme
+            position_ms: Pozicija u milisekundama
+            playlist_index: Index u playlisti
+            auto_save: Automatski sačuvaj
+        """
+        resume = self.get_resume_playback_settings()
+        resume["last_track_path"] = track_path
+        resume["last_position_ms"] = position_ms
+        resume["last_playlist_index"] = playlist_index
+        self.config["resume_playback"] = resume
+        
+        if auto_save:
+            self.save()
+        
+        print(f"💾 Saved playback position: {position_ms}ms for {track_path}")
+    
+    def get_saved_playback_position(self) -> tuple:
+        """
+        Vrati sačuvanu poziciju za resume.
+        
+        Returns:
+            tuple: (track_path, position_ms, playlist_index)
+        """
+        resume = self.get_resume_playback_settings()
+        return (
+            resume.get("last_track_path"),
+            resume.get("last_position_ms", 0),
+            resume.get("last_playlist_index", 0)
+        )
+    
+    def clear_playback_position(self, auto_save: bool = True) -> None:
+        """Obriši sačuvanu poziciju"""
+        resume = self.get_resume_playback_settings()
+        resume["last_track_path"] = None
+        resume["last_position_ms"] = 0
+        resume["last_playlist_index"] = 0
+        self.config["resume_playback"] = resume
         
         if auto_save:
             self.save()
@@ -329,6 +453,13 @@ if __name__ == "__main__":
     # Get theme
     current_theme = config.get_theme()
     print(f"Current theme: {current_theme}")
+    
+    # Test resume playback
+    print(f"\nResume playback enabled: {config.is_resume_playback_enabled()}")
+    
+    # Test tray settings
+    tray = config.get_tray_settings()
+    print(f"Minimize to tray: {tray.get('minimize_to_tray', True)}")
     
     # Change theme
     config.set_theme("Nordic Light")
