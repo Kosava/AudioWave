@@ -1,15 +1,7 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-# main.py - Thin wrapper for AudioWave
-# Calls the real entry point: audiowave.py
+# Thin wrapper – switch runtime to audiowave package
 
-import sys
-from audiowave import main as audiowave_main
-
-
-def main():
-    audiowave_main()
-
+from audiowave.main import main
 
 if __name__ == "__main__":
     main()
