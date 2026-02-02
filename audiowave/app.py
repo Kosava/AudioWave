@@ -3,7 +3,19 @@
 # audiowave.py - AudioWave Player sa ThemeManager integracijom
 # Version 0.4.5 - FIXED: Auto-play next track issues
 
+# ===== SINGLE INSTANCE LOCK =====
+from PyQt6.QtCore import QSharedMemory
 import sys
+
+APP_ID = "audiowave_single_instance"
+
+_shared_memory = QSharedMemory(APP_ID)
+if not _shared_memory.create(1):
+    # Već postoji instanca → ne pokreći novu
+    print("⚠️ AudioWave is already running (single instance enforced)")
+    sys.exit(0)
+
+# ===== OSTALI IMPORTS I KOD =====
 import os
 from pathlib import Path
 
