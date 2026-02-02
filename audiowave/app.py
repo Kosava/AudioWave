@@ -134,6 +134,9 @@ class AudioWaveApp:
         print("🪟 Creating unified window...")
         self.main_window = UnifiedPlayerWindow(self)
 
+        # Poveži aplikaciju sa prozorom za globalni pristup
+        self.app.main_window = self.main_window  # OVO JE DODATA LINIJA
+
         # Atributi za kompatibilnost
         self.window = self.main_window
         self.unified_window = self.main_window
