@@ -171,6 +171,28 @@ class RadioBrowserPlugin(QMainWindow):
             plugin_manager = kwargs.get('plugin_manager')
         
         self.plugin_manager = plugin_manager
+        
+        # 👇 PATCH 1.1 - Dodaj app fallback
+        # Ekstraktuj playlist_panel i app
+        playlist_panel = None
+        app = None
+        
+        for arg in args:
+            # Ako argument ima playlist_panel atribut (ili app atribut)
+            if hasattr(arg, 'playlist_panel'):
+                playlist_panel = arg.playlist_panel
+            if hasattr(arg, 'app'):
+                app = arg.app
+        
+        if 'playlist_panel' in kwargs:
+            playlist_panel = kwargs.get('playlist_panel')
+        if 'app' in kwargs:
+            app = kwargs.get('app')
+        
+        self.playlist_panel = playlist_panel
+        self.app = app or (playlist_panel.app if playlist_panel else None)
+        # 👆 KRAJ PATCH 1.1
+        
         self.settings = QSettings("TrayWave", "RadioBrowserPlugin")
         self.current_stations = []
         self.fetcher_thread = None
@@ -192,6 +214,8 @@ class RadioBrowserPlugin(QMainWindow):
         print(f"📡 [RadioBrowserPlugin] Initializing as QMainWindow...")
         print(f"   Parent: {parent}")
         print(f"   Plugin manager: {self.plugin_manager}")
+        print(f"   Playlist panel: {self.playlist_panel}")
+        print(f"   App: {self.app}")
         print(f"   args count: {len(args)}")
         print(f"   kwargs keys: {list(kwargs.keys())}")
         
@@ -664,8 +688,12 @@ class RadioBrowserPlugin(QMainWindow):
         name = station['name']
         url = station['url']
         
+        # 👇 PATCH 1.2 - Uvek emituj signal – bez uslova
         # Emituj signal prema plugin manageru
         self.add_to_playlist.emit(name, url)
+        
+        print(f"📻 RadioBrowser: emit add_to_playlist → {name}")
+        # 👆 KRAJ PATCH 1.2
         
         self.status_label.setText(f"✅ Added: {name}")
         self.statusBar().showMessage(f"✅ Added: {name}", 3000)

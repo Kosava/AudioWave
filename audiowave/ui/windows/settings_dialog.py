@@ -740,26 +740,33 @@ class SettingsDialog(QDialog):
             if plugin_info and plugin_info.dialog_class:
                 # Proveri da li već postoji instanca u cache-u
                 if plugin_id not in self.plugin_dialogs:
-                    # Kreiraj novu instancu i sačuvaj u cache
-                    dialog = plugin_info.dialog_class(self.parent_window)
-                    self.plugin_dialogs[plugin_id] = dialog
+                    if plugin_id == "radio_browser":
+                        dialog = plugin_info.dialog_class(
+                            playlist_panel=self.app.main_window.playlist_panel if hasattr(self.app, 'main_window') else None,
+                            app=self.app,
+                            parent=self
+                        )
+
+                        if hasattr(dialog, 'add_to_playlist') and hasattr(self.app, 'main_window'):
+                            dialog.add_to_playlist.connect(
+                                self.app.main_window.on_radio_station_add
+                            )
+
+                        self.plugin_dialogs[plugin_id] = dialog
+                        print("✅ [Settings] Radio Browser plugin initialized with app context")
+                    else:
+                        dialog = plugin_info.dialog_class(self.parent_window)
+                        self.plugin_dialogs[plugin_id] = dialog
                 else:
-                    # Koristi postojeću instancu
                     dialog = self.plugin_dialogs[plugin_id]
-                
-                # Proveri da li plugin ima configure() metodu
+
+                # 👉 OD OVDE dialog UVEK POSTOJI
                 if hasattr(dialog, 'configure'):
-                    # Za QMainWindow pluginove (npr. Radio Browser):
-                    # Zatvori Settings prozor da ne treperi sa Radio Browser-om
-                    self.accept()  # Zatvara Settings dialog
-                    
-                    # Pozovi configure() metodu
+                    self.accept()   # zatvori Settings
                     dialog.configure()
                 elif hasattr(dialog, 'exec'):
-                    # Pozovi exec() za QDialog pluginove
                     dialog.exec()
                 elif hasattr(dialog, 'show'):
-                    # Fallback: prikaži prozor
                     dialog.show()
     
     def create_about_tab(self):
