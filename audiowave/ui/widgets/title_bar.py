@@ -10,9 +10,11 @@ WAYLAND FIX:
 """
 
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QPushButton, QMenu, QApplication
-from PyQt6.QtCore import Qt, QPoint, QSize, QTimer
-from PyQt6.QtGui import QCursor, QAction
+from PyQt6.QtCore import Qt, QPoint, QSize, QTimer, QByteArray
+from PyQt6.QtGui import QCursor, QAction, QPixmap, QPainter, QColor, QIcon
+from PyQt6.QtSvg import QSvgRenderer
 import platform
+import os
 
 # Import SVG Icon Manager
 try:
@@ -34,6 +36,7 @@ class TitleBar(QWidget):
     - ✅ Context menu (desni klik)
     - ✅ Always on Top
     - ✅ Theme-aware design
+    - ✅ SVG/PNG logo (bez emoji)
     """
     
     def __init__(self, parent):
@@ -116,6 +119,119 @@ class TitleBar(QWidget):
             print(f"⚠️ [TitleBar] Wayland detection failed: {e}")
             return False
     
+    def _find_logo_file(self) -> str:
+        """
+        Traži logo fajl u različitim lokacijama.
+        
+        Returns:
+            str: Path do logo fajla ili None
+        """
+        # Moguće lokacije logo fajla
+        possible_paths = [
+            'assets/audiowave_color.svg',
+            'assets/audiowave_color.png',
+            'ui/assets/audiowave_color.svg',
+            'ui/assets/audiowave_color.png',
+            'resources/audiowave_color.svg',
+            'resources/audiowave_color.png',
+            './audiowave_color.svg',
+            './audiowave_color.png',
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                print(f"✅ [TitleBar] Found logo: {path}")
+                return path
+        
+        print("⚠️ [TitleBar] Logo file not found, using fallback")
+        return None
+    
+    def _create_themed_logo_svg(self, color: str) -> str:
+        """
+        Kreira theme-aware verziju AudioWave logo-a.
+        Menja plavu boju sa primary bojom teme.
+        
+        Args:
+            color: Hex boja za pozadinu
+            
+        Returns:
+            SVG string
+        """
+        # Kreiraj tamniju verziju za gradijent
+        color_rgb = QColor(color)
+        darker = color_rgb.darker(115).name()
+        
+        return f'''
+            <svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:{color};stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:{darker};stop-opacity:1" />
+                </linearGradient>
+              </defs>
+              <circle cx="128" cy="128" r="128" fill="url(#bgGrad)"/>
+              <polyline points="0,128 4,131 8,135 12,139 16,143 20,146 24,150 28,153 32,156 36,158 40,161 44,163 48,164 52,166 56,167 60,167 64,168 68,167 72,167 76,166 80,164 84,163 88,161 92,158 96,156 100,153 104,150 108,146 112,143 116,139 120,135 124,131 128,128 132,125 136,121 140,117 144,113 148,110 152,106 156,103 160,100 164,98 168,95 172,93 176,92 180,90 184,89 188,89 192,88 196,89 200,89 204,90 208,92 212,93 216,95 220,98 224,100 228,103 232,106 236,110 240,113 244,117 248,121 252,125" 
+                        fill="none" stroke="rgb(255,255,255)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        '''
+    
+    def _svg_to_pixmap(self, svg_data: str, size: int = 24) -> QPixmap:
+        """
+        Konvertuje SVG u QPixmap.
+        
+        Args:
+            svg_data: SVG string
+            size: Veličina pixmap-a
+            
+        Returns:
+            QPixmap
+        """
+        svg_bytes = QByteArray(svg_data.encode('utf-8'))
+        renderer = QSvgRenderer(svg_bytes)
+        
+        pixmap = QPixmap(size, size)
+        pixmap.fill(QColor(0, 0, 0, 0))  # Transparent
+        
+        painter = QPainter(pixmap)
+        renderer.render(painter)
+        painter.end()
+        
+        return pixmap
+    
+    def update_logo(self):
+        """Update logo sa theme-aware SVG verzijom"""
+        # Pokušaj učitati eksterni fajl
+        logo_file = self._find_logo_file()
+        
+        if logo_file and logo_file.endswith('.png'):
+            # Učitaj PNG direktno
+            pixmap = QPixmap(logo_file)
+            if not pixmap.isNull():
+                pixmap = pixmap.scaled(24, 24, Qt.AspectRatioMode.KeepAspectRatio, 
+                                      Qt.TransformationMode.SmoothTransformation)
+                self.logo_label.setPixmap(pixmap)
+                print("✅ [TitleBar] Loaded PNG logo")
+                return
+        
+        elif logo_file and logo_file.endswith('.svg'):
+            # Učitaj eksterni SVG
+            try:
+                with open(logo_file, 'r') as f:
+                    svg_data = f.read()
+                    pixmap = self._svg_to_pixmap(svg_data, 24)
+                    self.logo_label.setPixmap(pixmap)
+                    print("✅ [TitleBar] Loaded SVG logo")
+                    return
+            except Exception as e:
+                print(f"⚠️ [TitleBar] Failed to load SVG: {e}")
+        
+        # Fallback: Generiši theme-aware SVG
+        logo_color = self.primary_color if self.primary_color else "#667eea"
+        svg_data = self._create_themed_logo_svg(logo_color)
+        pixmap = self._svg_to_pixmap(svg_data, 24)
+        self.logo_label.setPixmap(pixmap)
+        print(f"✅ [TitleBar] Generated themed logo with color: {logo_color}")
+    
     def setup_ui(self):
         """Setup title bar UI elements"""
         layout = QHBoxLayout(self)
@@ -123,9 +239,11 @@ class TitleBar(QWidget):
         layout.setSpacing(12)
         
         # LEFT SIDE: Logo + Title
-        self.logo_label = QLabel("🎵")
+        # SVG/PNG Logo umesto emoji
+        self.logo_label = QLabel()
         self.logo_label.setObjectName("titleBarLogo")
         self.logo_label.setFixedSize(24, 24)
+        self.logo_label.setScaledContents(False)  # Manual scaling za bolji kvalitet
         layout.addWidget(self.logo_label)
         
         self.title_label = QLabel("AudioWave")
@@ -160,6 +278,8 @@ class TitleBar(QWidget):
         layout.addWidget(self.maximize_btn)
         layout.addWidget(self.close_btn)
         
+        # Update logo i ikone
+        self.update_logo()
         self.update_icons()
     
     def setup_context_menu(self):
@@ -312,16 +432,18 @@ class TitleBar(QWidget):
             self.maximize_btn.setIconSize(QSize(16, 16))
             self.maximize_btn.setToolTip("Restore" if self._is_maximized else "Maximize")
             
-            # 🔧 PATCH: Koristi get_icon() za close dugme
-            self.close_btn.setIcon(get_icon("close", size=14))
+            # 🔧 FIXED: Koristi get_themed_icon() za close dugme sa pravom bojom
+            close_color = "#94a3b8" if self.is_dark_theme else "#64748b"
+            self.close_btn.setIcon(
+                get_themed_icon('close', close_color, self.is_dark_theme, 14)
+            )
             self.close_btn.setIconSize(QSize(14, 14))
             self.close_btn.setText("")
         else:
             # Fallback: obični tekst (bez emoji simbola)
             self.minimize_btn.setText("-")
             self.maximize_btn.setText("□" if not self._is_maximized else "❐")
-            # 🔧 PATCH: Obriši tekst za close dugme
-            self.close_btn.setText("")
+            self.close_btn.setText("×")
     
     def update_from_theme(self, theme):
         """Update title bar when theme changes"""
@@ -337,6 +459,8 @@ class TitleBar(QWidget):
         
         self.text_color = "#ffffff" if self.is_dark_theme else "#1e293b"
         
+        # Update logo sa novom temom
+        self.update_logo()
         self.update_icons()
         self.apply_dynamic_style()
         self.update_context_menu_style()
@@ -369,7 +493,7 @@ class TitleBar(QWidget):
             }}
             
             #titleBarLogo {{
-                font-size: 16px;
+                background: transparent;
             }}
             
             #titleBarTitle {{
