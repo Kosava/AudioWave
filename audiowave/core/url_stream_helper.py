@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # core/url_stream_helper.py
 """
-Helper modul za podršku URL streaming-a u AudioWave.
+Helper modul za podrÅ¡ku URL streaming-a u AudioWave.
 Koristi uridecodebin za streaming URL-ova.
 """
 
@@ -16,7 +16,7 @@ try:
     GST_AVAILABLE = True
 except ImportError:
     GST_AVAILABLE = False
-    print("⚠️ GStreamer not available for URL streaming")
+    print("âš ï¸ GStreamer not available for URL streaming")
 
 
 def is_stream_url(filepath: str) -> bool:
@@ -37,17 +37,17 @@ def is_stream_url(filepath: str) -> bool:
 
 def patch_gstreamer_play_file(engine):
     """
-    Patch-uje GStreamer engine play_file metodu da podrži URL streaming.
+    Patch-uje GStreamer engine play_file metodu da podrÅ¾i URL streaming.
     Koristi uridecodebin umesto filesrc za URL-ove.
     
     Args:
         engine: GStreamerEngine instanca
     """
     if not GST_AVAILABLE:
-        print("⚠️ Cannot patch engine - GStreamer not available")
+        print("âš ï¸ Cannot patch engine - GStreamer not available")
         return
     
-    # Sačuvaj originalnu metodu
+    # SaÄuvaj originalnu metodu
     original_play_file = engine.play_file
     
     # Dodaj atribute za URL streaming
@@ -56,10 +56,10 @@ def patch_gstreamer_play_file(engine):
     engine._is_streaming = False
     
     def patched_play_file(filepath: str):
-        """Wrapper oko play_file koji dodaje URL podršku"""
-        # Proveri da li engine čisti
+        """Wrapper oko play_file koji dodaje URL podrÅ¡ku"""
+        # Proveri da li engine Äisti
         if engine._is_cleaning_up:
-            print("⚠️ Engine is cleaning up, cannot play")
+            print("âš ï¸ Engine is cleaning up, cannot play")
             return
         
         # Proveri da li je URL ili fajl
@@ -72,9 +72,9 @@ def patch_gstreamer_play_file(engine):
         
         # Log
         if is_url:
-            print(f"📻 GStreamer streaming: {filepath}")
+            print(f"ðŸ“» GStreamer streaming: {filepath}")
         else:
-            print(f"🎵 GStreamer playing: {Path(filepath).name}")
+            print(f"ðŸŽµ GStreamer playing: {Path(filepath).name}")
         
         try:
             # Za URL streaming, koristi playbin (najjednostavnije)
@@ -88,7 +88,7 @@ def patch_gstreamer_play_file(engine):
                 original_play_file(filepath)
                 
         except Exception as e:
-            print(f"❌ Error playing file/stream: {e}")
+            print(f"âŒ Error playing file/stream: {e}")
             import traceback
             traceback.print_exc()
             engine.error_occurred.emit(str(e))
@@ -97,7 +97,7 @@ def patch_gstreamer_play_file(engine):
     
     def _play_stream_url(engine, url: str):
         """
-        Pusti URL stream koristeći playbin3.
+        Pusti URL stream koristeÄ‡i playbin3.
         playbin3 automatski hendluje sve - source, decoding, output.
         """
         # Zaustavi glavni pipeline
@@ -119,18 +119,39 @@ def patch_gstreamer_play_file(engine):
         # Postavi URI
         engine._stream_pipeline.set_property("uri", url)
         
-        # Poveži volume sa stream pipeline-om
-        # playbin ima ugrađen volume control
+        # PoveÅ¾i volume sa stream pipeline-om
+        # playbin ima ugraÄ‘en volume control
         if hasattr(engine, '_volume'):
             volume_linear = engine._volume / 100.0
             engine._stream_pipeline.set_property("volume", volume_linear)
         
         # Postavi audio sink (koristimo isti kao glavni pipeline)
         if engine.audiosink:
-            # Ne možemo ponovo koristiti isti sink, kreiraj novi
+            # Ne moÅ¾emo ponovo koristiti isti sink, kreiraj novi
             audio_sink = Gst.ElementFactory.make("autoaudiosink", "stream-sink")
             if audio_sink:
                 engine._stream_pipeline.set_property("audio-sink", audio_sink)
+        
+        # ✅ NOVO: Setup spectrum analyzer za streaming (ako engine ima spectrum)
+        if hasattr(engine, 'spectrum_element') and engine.spectrum_element:
+            # Kreiraj spectrum element za stream
+            stream_spectrum = Gst.ElementFactory.make("spectrum", "stream-spectrum")
+            if stream_spectrum:
+                # Kopiraj settings iz glavnog spectrum-a
+                stream_spectrum.set_property("bands", 64)
+                stream_spectrum.set_property("threshold", -80)
+                stream_spectrum.set_property("interval", 16666666)  # ~60fps
+                stream_spectrum.set_property("post-messages", True)
+                stream_spectrum.set_property("message-magnitude", True)
+                
+                # Postavi kao audio filter u playbin
+                engine._stream_pipeline.set_property("audio-filter", stream_spectrum)
+                
+                print("✅ Spectrum analyzer enabled for streaming")
+            else:
+                print("⚠️ Could not create spectrum element for streaming")
+        elif hasattr(engine, 'spectrum_element'):
+            print("ℹ️ Spectrum element exists but not initialized yet")
         
         # Postavi bus za monitoring
         bus = engine._stream_pipeline.get_bus()
@@ -140,19 +161,19 @@ def patch_gstreamer_play_file(engine):
         def on_stream_message(bus, message):
             t = message.type
             if t == Gst.MessageType.EOS:
-                print("📻 Stream ended")
+                print("ðŸ“» Stream ended")
                 engine.playback_ended.emit()
                 _stop_stream(engine)
             elif t == Gst.MessageType.ERROR:
                 err, debug = message.parse_error()
-                print(f"❌ Stream error: {err}, {debug}")
+                print(f"âŒ Stream error: {err}, {debug}")
                 engine.error_occurred.emit(str(err))
                 _stop_stream(engine)
             elif t == Gst.MessageType.STATE_CHANGED:
                 if message.src == engine._stream_pipeline:
                     old_state, new_state, pending = message.parse_state_changed()
                     if new_state == Gst.State.PLAYING:
-                        print("📻 Stream playing")
+                        print("ðŸ“» Stream playing")
         
         bus.connect("message", on_stream_message)
         
@@ -167,7 +188,7 @@ def patch_gstreamer_play_file(engine):
         engine._paused = False
         engine._is_streaming = True
         
-        # Pokreni position timer (iako stream možda nema poznatu duration)
+        # Pokreni position timer (iako stream moÅ¾da nema poznatu duration)
         if engine.position_timer:
             engine.position_timer.start()
         
@@ -247,24 +268,24 @@ def patch_gstreamer_play_file(engine):
     engine.set_volume = patched_set_volume
     engine.toggle_play_pause = patched_toggle_play_pause
     
-    print("✅ GStreamer engine patched for URL streaming support (using playbin)")
+    print("âœ… GStreamer engine patched for URL streaming support (using playbin)")
 
 
 def get_stream_display_name(url: str, custom_name: str = None) -> str:
     """
-    Generiši display name za stream URL.
+    GeneriÅ¡i display name za stream URL.
     
     Args:
         url: Stream URL
-        custom_name: Korisničko ime (opciono)
+        custom_name: KorisniÄko ime (opciono)
         
     Returns:
         Formatiran display name
     """
     if custom_name and custom_name.strip():
-        return f"📻 {custom_name.strip()}"
+        return f"ðŸ“» {custom_name.strip()}"
     
-    # Pokušaj da ekstraktuješ ime iz URL-a
+    # PokuÅ¡aj da ekstraktujeÅ¡ ime iz URL-a
     try:
         from urllib.parse import urlparse
         parsed = urlparse(url)
@@ -278,6 +299,6 @@ def get_stream_display_name(url: str, custom_name: str = None) -> str:
         if ':' in domain:
             domain = domain.split(':')[0]
         
-        return f"📻 {domain}"
+        return f"ðŸ“» {domain}"
     except:
-        return f"📻 Stream"
+        return f"ðŸ“» Stream"

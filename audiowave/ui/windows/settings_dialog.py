@@ -8,20 +8,22 @@ Kompletan settings dialog za AudioWave Player.
 NOVE OPCIJE:
 ✅ Minimize to tray on close (checkbox u Playback tabu)
 ✅ Resume playback position (checkbox u Playback tabu)
+✅ Keyboard Shortcuts kartica - pregled svih prečica
 """
 
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QTabWidget, QWidget,
     QLabel, QPushButton, QComboBox, QCheckBox, QSlider,
-    QGroupBox, QFormLayout, QFrame, QScrollArea, QMessageBox
+    QGroupBox, QFormLayout, QFrame, QScrollArea, QMessageBox,
+    QTableWidget, QTableWidgetItem, QHeaderView
 )
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QPixmap, QFont, QDesktopServices, QCursor
+from PyQt6.QtGui import QFont, QCursor
 from PyQt6.QtCore import QUrl
 import subprocess
 import shutil
 
-# Import About konstanti
+# Import About konstanti - samo za fallback ako AboutWidget ne postoji
 try:
     from ui.dialogs.about import (
         APP_NAME, APP_VERSION, APP_DESCRIPTION,
@@ -320,7 +322,7 @@ class SettingsDialog(QDialog):
         
     def setup_ui(self):
         self.setWindowTitle(f"{APP_NAME} Settings")
-        self.setMinimumSize(600, 580)
+        self.setMinimumSize(650, 600)
         
         layout = QVBoxLayout(self)
         
@@ -343,6 +345,11 @@ class SettingsDialog(QDialog):
         playback_tab = self.create_playback_tab()
         playback_icon = get_icon('play_circle', "#667eea", 16)
         self.tab_widget.addTab(playback_tab, playback_icon, "Playback")
+        
+        # ✅ NOVO: Keyboard Shortcuts tab
+        shortcuts_tab = self.create_shortcuts_tab()
+        shortcuts_icon = get_icon('keyboard', "#667eea", 16)
+        self.tab_widget.addTab(shortcuts_tab, shortcuts_icon, "Shortcuts")
         
         # Plugins tab
         plugins_tab = self.create_plugins_tab()
@@ -419,413 +426,375 @@ class SettingsDialog(QDialog):
         layout.addWidget(group_theme)
         
         # Player Style
-        group_player = QGroupBox("Player Style")
-        form_player = QFormLayout(group_player)
+        group_style = QGroupBox("Player Style")
+        form_style = QFormLayout(group_style)
         
-        self.player_style_combo = QComboBox()
-        self.player_style_combo.addItems(["Modern", "Vinyl Player", "Wave Form", "Minimal Zen"])
+        self.style_combo = QComboBox()
+        self.style_combo.addItems(["Modern Compact", "Classic Full", "Minimal"])
         
+        # ✅ FIX: Koristi player_style atribut, ne current_style
         if hasattr(self.parent_window, 'player_window') and self.parent_window.player_window:
-            current_style = getattr(self.parent_window.player_window, 'player_style', 'Modern')
-            index = self.player_style_combo.findText(current_style)
-            if index >= 0:
-                self.player_style_combo.setCurrentIndex(index)
+            if hasattr(self.parent_window.player_window, 'player_style'):
+                current_style = self.parent_window.player_window.player_style
+                index = self.style_combo.findText(current_style)
+                if index >= 0:
+                    self.style_combo.setCurrentIndex(index)
         
-        form_player.addRow("Visual Style:", self.player_style_combo)
-        layout.addWidget(group_player)
+        form_style.addRow("Layout:", self.style_combo)
+        layout.addWidget(group_style)
         
-        # UI Options
-        group_ui = QGroupBox("UI Options")
-        form_ui = QFormLayout(group_ui)
-        
-        self.animations_check = QCheckBox("Enable animations")
-        self.animations_check.setChecked(True)
-        
-        self.compact_check = QCheckBox("Compact layout")
-        
-        form_ui.addRow(self.animations_check)
-        form_ui.addRow(self.compact_check)
-        
-        layout.addWidget(group_ui)
         layout.addStretch()
-        
         return tab
     
-    def preview_theme(self, theme_name):
-        if self.theme_manager and self.parent_window:
-            self.theme_manager.apply_theme(self.parent_window, theme_name)
-    
     def create_audio_tab(self):
-        """Audio settings sa backend selekcijom"""
+        """Audio settings"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # ===== AUDIO BACKEND =====
-        group_backend = QGroupBox("Audio Output Backend")
-        backend_layout = QVBoxLayout(group_backend)
-        
-        # Info label
-        info_label = QLabel(
-            "Select audio backend. GStreamer and PipeWire support real-time EQ.\n"
-            "Restart required after changing backend."
-        )
-        info_label.setStyleSheet("color: #888; font-size: 11px; margin-bottom: 10px;")
-        info_label.setWordWrap(True)
-        backend_layout.addWidget(info_label)
-        
-        # Backend combo
-        backend_form = QFormLayout()
+        # Audio Backend Selection
+        group_backend = QGroupBox("Audio Backend")
+        form_backend = QFormLayout(group_backend)
         
         self.backend_combo = QComboBox()
-        self.backend_combo.setMinimumWidth(250)
         
-        # Dodaj dostupne backend-ove
+        # Dodaj backend-ove u combo box
         for backend_id, info in self.available_backends.items():
-            status = "✅" if info["available"] else "❌"
-            eq_status = "🎛️" if info["has_eq"] else ""
-            display_text = f"{info['icon']} {info['name']} {eq_status} {status}"
-            self.backend_combo.addItem(display_text, backend_id)
-            
-            # Disable ako nije dostupan
-            if not info["available"]:
-                index = self.backend_combo.count() - 1
-                self.backend_combo.model().item(index).setEnabled(False)
+            if info["available"]:
+                display_name = f"{info['name']}"
+                if info["has_eq"]:
+                    display_name += " ✓ EQ"
+                self.backend_combo.addItem(display_name, backend_id)
         
-        self.backend_combo.currentIndexChanged.connect(self._on_backend_changed)
-        backend_form.addRow("Output:", self.backend_combo)
+        # Postavi trenutni backend iz config-a
+        try:
+            current_backend = load_engine_preference()
+            for i in range(self.backend_combo.count()):
+                if self.backend_combo.itemData(i) == current_backend:
+                    self.backend_combo.setCurrentIndex(i)
+                    break
+        except:
+            pass
         
-        backend_layout.addLayout(backend_form)
+        # Status label
+        self.backend_status = QLabel()
+        self._update_backend_status()
+        self.backend_combo.currentIndexChanged.connect(self._update_backend_status)
         
-        # Backend opis
-        self.backend_desc_label = QLabel()
-        self.backend_desc_label.setStyleSheet(
-            "background: rgba(102, 126, 234, 0.1); "
-            "border-radius: 6px; padding: 10px; margin-top: 5px;"
-        )
-        self.backend_desc_label.setWordWrap(True)
-        backend_layout.addWidget(self.backend_desc_label)
-        
-        # Ažuriraj opis
-        self._on_backend_changed(0)
+        form_backend.addRow("Engine:", self.backend_combo)
+        form_backend.addRow("Status:", self.backend_status)
         
         layout.addWidget(group_backend)
         
-        # ===== VOLUME =====
-        group_volume = QGroupBox("Volume")
+        # Volume
+        group_volume = QGroupBox("Volume Settings")
         form_volume = QFormLayout(group_volume)
         
         self.volume_slider = QSlider(Qt.Orientation.Horizontal)
         self.volume_slider.setRange(0, 100)
         self.volume_slider.setValue(70)
-        self.volume_slider.setTickPosition(QSlider.TickPosition.TicksBelow)
-        self.volume_slider.setTickInterval(10)
+        self.volume_slider.valueChanged.connect(self._update_volume_label)
         
         self.volume_label = QLabel("70%")
-        self.volume_slider.valueChanged.connect(
-            lambda v: self.volume_label.setText(f"{v}%")
-        )
         
-        self.remember_volume_check = QCheckBox("Remember last volume")
-        self.remember_volume_check.setChecked(True)
+        volume_layout = QHBoxLayout()
+        volume_layout.addWidget(self.volume_slider)
+        volume_layout.addWidget(self.volume_label)
         
-        form_volume.addRow("Default volume:", self.volume_slider)
-        form_volume.addRow("", self.volume_label)
-        form_volume.addRow(self.remember_volume_check)
-        
+        form_volume.addRow("Default Volume:", volume_layout)
         layout.addWidget(group_volume)
         
-        # ===== AUDIO DEVICES =====
-        group_devices = QGroupBox("Output Device")
-        devices_form = QFormLayout(group_devices)
-        
-        self.device_combo = QComboBox()
-        self.device_combo.addItem("System Default")
-        
-        # TODO: Popuni sa stvarnim uređajima iz backend-a
-        
-        self.refresh_devices_btn = QPushButton("Refresh")
-        self.refresh_devices_btn.setFixedWidth(80)
-        self.refresh_devices_btn.clicked.connect(self._refresh_audio_devices)
-        
-        device_row = QHBoxLayout()
-        device_row.addWidget(self.device_combo, 1)
-        device_row.addWidget(self.refresh_devices_btn)
-        
-        devices_form.addRow("Device:", device_row)
-        
-        layout.addWidget(group_devices)
-        
         layout.addStretch()
-        
         return tab
     
-    def _on_backend_changed(self, index):
-        """Kada se promeni audio backend"""
-        backend_id = self.backend_combo.currentData()
-        if backend_id and backend_id in self.available_backends:
-            info = self.available_backends[backend_id]
-            
-            eq_text = "✅ Equalizer supported" if info["has_eq"] else "❌ No EQ support"
-            status_text = "Available" if info["available"] else "Not installed"
-            
-            self.backend_desc_label.setText(
-                f"<b>{info['name']}</b><br>"
-                f"{info['description']}<br><br>"
-                f"{eq_text}<br>"
-                f"Status: {status_text}"
-            )
-    
-    def _refresh_audio_devices(self):
-        """Osveži listu audio uređaja"""
-        # TODO: Implementirati za svaki backend
-        QMessageBox.information(
-            self, "Refresh Devices",
-            "Device list refreshed.\n\n"
-            "Note: Full device enumeration requires\n"
-            "the selected audio backend to be active."
-        )
-    
     def create_playback_tab(self):
+        """Playback settings"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        
+        # System Integration
+        group_system = QGroupBox("System Integration")
+        system_layout = QVBoxLayout(group_system)
+        
+        self.minimize_check = QCheckBox("Minimize to system tray on close")
+        
+        # ✅ NOVO: Učitaj trenutnu vrednost iz config-a
+        if self.config:
+            tray_settings = self.config.get_tray_settings()
+            self.minimize_check.setChecked(tray_settings.get("minimize_to_tray", True))
+        else:
+            self.minimize_check.setChecked(True)
+        
+        self.minimize_check.setToolTip("When enabled, closing the window will minimize to tray instead of quitting")
+        system_layout.addWidget(self.minimize_check)
+        
+        layout.addWidget(group_system)
+        
+        # Playback Behavior
+        group_playback = QGroupBox("Playback Behavior")
+        playback_layout = QVBoxLayout(group_playback)
+        
+        self.resume_check = QCheckBox("Resume playback position on startup")
+        
+        # ✅ NOVO: Učitaj trenutnu vrednost iz config-a
+        if self.config:
+            self.resume_check.setChecked(self.config.is_resume_playback_enabled())
+        else:
+            self.resume_check.setChecked(False)
+        
+        self.resume_check.setToolTip("Remember and restore playback position when app restarts")
+        playback_layout.addWidget(self.resume_check)
+        
+        layout.addWidget(group_playback)
+        
+        layout.addStretch()
+        return tab
+    
+    def create_shortcuts_tab(self):
         """
-        Playback settings - ✅ AŽURIRANO sa novim opcijama
+        ✅ NOVO: Keyboard Shortcuts tab - pregled svih prečica
         """
         tab = QWidget()
         layout = QVBoxLayout(tab)
         
-        # ===== PLAYBACK OPTIONS =====
-        group = QGroupBox("Playback Options")
-        form = QFormLayout(group)
+        # Header
+        header = QLabel("🎹 Keyboard Shortcuts")
+        header.setStyleSheet("font-size: 16px; font-weight: bold; padding: 10px;")
+        layout.addWidget(header)
         
-        self.autoplay_check = QCheckBox("Auto-play on startup")
-        self.autoplay_check.setChecked(True)
+        # Info tekst
+        info = QLabel("All available keyboard shortcuts for AudioWave Player:")
+        info.setStyleSheet("color: #888; padding: 0 10px 10px 10px;")
+        layout.addWidget(info)
         
-        self.shuffle_check = QCheckBox("Shuffle playback")
+        # Tabela prečica
+        table = QTableWidget()
+        table.setColumnCount(3)
+        table.setHorizontalHeaderLabels(["Shortcut", "Action", "Category"])
         
-        self.loop_combo = QComboBox()
-        self.loop_combo.addItems(["Off", "Track", "Playlist"])
-        self.loop_combo.setCurrentText("Playlist")
+        # Definiši sve prečice
+        shortcuts_data = [
+            # Playback
+            ("Space", "Play / Pause", "Playback"),
+            ("Enter", "Play selected track", "Playback"),
+            ("Esc", "Stop playback", "Playback"),
+            ("M", "Toggle mute", "Playback"),
+            
+            # Navigation
+            ("↑ / ↓", "Navigate playlist", "Navigation"),
+            ("Alt + ↑", "Previous track", "Navigation"),
+            ("Alt + ↓", "Next track", "Navigation"),
+            ("← / →", "Seek ±5 seconds", "Navigation"),
+            ("Ctrl + ← / →", "Seek ±10 seconds", "Navigation"),
+            
+            # Volume
+            ("Ctrl + ↑ / ↓", "Volume ±5%", "Volume"),
+            ("Alt + ↑ / ↓", "Volume ±10%", "Volume"),
+            
+            # Playlist
+            ("Ctrl + A", "Select all tracks", "Playlist"),
+            ("Del", "Remove selected tracks", "Playlist"),
+            ("Ctrl + O", "Open files", "Playlist"),
+            ("Ctrl + L", "Clear playlist", "Playlist"),
+            ("F2", "Toggle playlist visibility", "Playlist"),
+            ("F5", "Refresh playlist", "Playlist"),
+            
+            # Plugins
+            ("F3 / Ctrl + E", "Open Equalizer", "Plugins"),
+            ("F4", "Open Lyrics", "Plugins"),
+            ("F7", "Sleep Timer", "Plugins"),
+            ("Ctrl + P", "Plugin settings", "Plugins"),
+            
+            # Other
+            ("Ctrl + S", "Open Settings", "Other"),
+            ("F1", "About AudioWave", "Other"),
+            ("Ctrl + H", "Show shortcuts (this)", "Other"),
+            ("Ctrl + Q", "Quit application", "Other"),
+        ]
         
-        self.crossfade_check = QCheckBox("Crossfade between tracks")
+        # Popuni tabelu
+        table.setRowCount(len(shortcuts_data))
         
-        self.crossfade_slider = QSlider(Qt.Orientation.Horizontal)
-        self.crossfade_slider.setRange(0, 10)
-        self.crossfade_slider.setValue(3)
-        self.crossfade_slider.setEnabled(False)
-        self.crossfade_check.toggled.connect(self.crossfade_slider.setEnabled)
+        for row, (shortcut, action, category) in enumerate(shortcuts_data):
+            # Shortcut kolona
+            shortcut_item = QTableWidgetItem(shortcut)
+            shortcut_item.setFont(QFont("Monospace", 10, QFont.Weight.Bold))
+            table.setItem(row, 0, shortcut_item)
+            
+            # Action kolona
+            action_item = QTableWidgetItem(action)
+            table.setItem(row, 1, action_item)
+            
+            # Category kolona
+            category_item = QTableWidgetItem(category)
+            category_item.setForeground(Qt.GlobalColor.gray)
+            table.setItem(row, 2, category_item)
         
-        form.addRow(self.autoplay_check)
-        form.addRow(self.shuffle_check)
-        form.addRow("Loop mode:", self.loop_combo)
-        form.addRow(self.crossfade_check)
-        form.addRow("Crossfade (sec):", self.crossfade_slider)
+        # Stilizuj tabelu
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        table.setAlternatingRowColors(True)
         
-        layout.addWidget(group)
+        # Resize kolone
+        header = table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
         
-        # ===== ✅ NOVO: SYSTEM TRAY OPTIONS =====
-        group_tray = QGroupBox("System Tray")
-        form_tray = QFormLayout(group_tray)
+        table.verticalHeader().setVisible(False)
         
-        # Minimize to tray on close
-        self.minimize_to_tray_check = QCheckBox("Minimize to tray when closing window")
-        self.minimize_to_tray_check.setToolTip(
-            "When enabled, clicking the X button will minimize to system tray\n"
-            "instead of closing the application."
-        )
+        layout.addWidget(table)
         
-        # Učitaj trenutnu vrednost iz config-a
-        if self.config:
-            tray_settings = self.config.get_tray_settings()
-            self.minimize_to_tray_check.setChecked(
-                tray_settings.get("minimize_to_tray", True)
-            )
-        else:
-            self.minimize_to_tray_check.setChecked(True)
-        
-        form_tray.addRow(self.minimize_to_tray_check)
-        
-        # Info label za tray
-        tray_info = QLabel(
-            "💡 Tip: Left-click tray icon to show/hide window.\n"
-            "Right-click for menu with playback controls."
-        )
-        tray_info.setStyleSheet("color: #888; font-size: 10px; margin-top: 5px;")
-        form_tray.addRow(tray_info)
-        
-        layout.addWidget(group_tray)
-        
-        # ===== ✅ NOVO: RESUME PLAYBACK =====
-        group_resume = QGroupBox("Resume Playback")
-        form_resume = QFormLayout(group_resume)
-        
-        self.resume_playback_check = QCheckBox("Resume from last position on startup")
-        self.resume_playback_check.setToolTip(
-            "When enabled, the player will remember the last song and position\n"
-            "and continue from where you left off when you restart."
-        )
-        
-        # Učitaj trenutnu vrednost iz config-a
-        if self.config:
-            self.resume_playback_check.setChecked(
-                self.config.is_resume_playback_enabled()
-            )
-        else:
-            self.resume_playback_check.setChecked(False)
-        
-        form_resume.addRow(self.resume_playback_check)
-        
-        # Info label za resume
-        resume_info = QLabel(
-            "💡 The player will save your position when closing and\n"
-            "automatically load the last track when you start again."
-        )
-        resume_info.setStyleSheet("color: #888; font-size: 10px; margin-top: 5px;")
-        form_resume.addRow(resume_info)
-        
-        layout.addWidget(group_resume)
-        
-        layout.addStretch()
+        # Footer note
+        footer = QLabel("💡 Tip: Most shortcuts work globally when the player window is focused.")
+        footer.setStyleSheet("color: #888; padding: 10px; font-style: italic;")
+        layout.addWidget(footer)
         
         return tab
     
     def create_plugins_tab(self):
-        """Plugins settings"""
+        """Plugins tab"""
         tab = QWidget()
         layout = QVBoxLayout(tab)
-        layout.setSpacing(15)
         
-        header_label = QLabel("Manage Plugins")
-        header_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+        # Header
+        header_label = QLabel("🔌 Installed Plugins")
+        header_label.setStyleSheet("font-size: 16px; font-weight: bold; padding: 10px;")
         layout.addWidget(header_label)
         
-        # Scroll area za pluginove
+        # Scroll area za plugin kartice
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout(scroll_content)
-        scroll_layout.setSpacing(10)
+        plugins_widget = QWidget()
+        plugins_layout = QVBoxLayout(plugins_widget)
+        plugins_layout.setSpacing(10)
         
         if self.plugin_manager:
-            for plugin_info in self.plugin_manager.get_all_plugins():
-                card = PluginCard(plugin_info)
-                card.toggled.connect(self._on_plugin_toggled)
-                card.configure_clicked.connect(self._on_plugin_configure)
-                self.plugin_cards[plugin_info.id] = card
-                scroll_layout.addWidget(card)
+            plugins = self.plugin_manager.get_all_plugins()
+            
+            if plugins:
+                for plugin_info in plugins:
+                    card = PluginCard(plugin_info, self)
+                    card.toggled.connect(self._on_plugin_toggled)
+                    card.configure_clicked.connect(self._on_plugin_configure)
+                    self.plugin_cards[plugin_info.id] = card
+                    plugins_layout.addWidget(card)
+            else:
+                no_plugins = QLabel("No plugins installed")
+                no_plugins.setStyleSheet("color: #888; padding: 20px;")
+                plugins_layout.addWidget(no_plugins)
         else:
-            no_plugins_label = QLabel("Plugin manager not available")
-            no_plugins_label.setStyleSheet("color: #888; font-style: italic;")
-            scroll_layout.addWidget(no_plugins_label)
+            error_label = QLabel("❌ Plugin system not available")
+            error_label.setStyleSheet("color: #ff6b6b; padding: 20px;")
+            plugins_layout.addWidget(error_label)
         
-        scroll_layout.addStretch()
-        scroll.setWidget(scroll_content)
-        
-        layout.addWidget(scroll, 1)
+        plugins_layout.addStretch()
+        scroll.setWidget(plugins_widget)
+        layout.addWidget(scroll)
         
         return tab
-    
-    def _on_plugin_toggled(self, plugin_id: str, enabled: bool):
-        """Kada se plugin uključi/isključi"""
-        if self.plugin_manager:
-            if enabled:
-                self.plugin_manager.enable_plugin(plugin_id)
-            else:
-                self.plugin_manager.disable_plugin(plugin_id)
-    
-    def _on_plugin_configure(self, plugin_id: str):
-        """Kada se klikne Configure na plugin"""
-        if self.plugin_manager:
-            plugin_info = self.plugin_manager.get_plugin(plugin_id)
-            if plugin_info and plugin_info.dialog_class:
-                # Proveri da li već postoji instanca u cache-u
-                if plugin_id not in self.plugin_dialogs:
-                    if plugin_id == "radio_browser":
-                        dialog = plugin_info.dialog_class(
-                            playlist_panel=self.app.main_window.playlist_panel if hasattr(self.app, 'main_window') else None,
-                            app=self.app,
-                            parent=self
-                        )
-
-                        if hasattr(dialog, 'add_to_playlist') and hasattr(self.app, 'main_window'):
-                            dialog.add_to_playlist.connect(
-                                self.app.main_window.on_radio_station_add
-                            )
-
-                        self.plugin_dialogs[plugin_id] = dialog
-                        print("✅ [Settings] Radio Browser plugin initialized with app context")
-                    else:
-                        dialog = plugin_info.dialog_class(self.parent_window)
-                        self.plugin_dialogs[plugin_id] = dialog
-                else:
-                    dialog = self.plugin_dialogs[plugin_id]
-
-                # 👉 OD OVDE dialog UVEK POSTOJI
-                if hasattr(dialog, 'configure'):
-                    self.accept()   # zatvori Settings
-                    dialog.configure()
-                elif hasattr(dialog, 'exec'):
-                    dialog.exec()
-                elif hasattr(dialog, 'show'):
-                    dialog.show()
     
     def create_about_tab(self):
         """About tab - koristi postojeći AboutWidget iz about.py"""
         from ui.dialogs.about import AboutWidget
         return AboutWidget(self)
     
-    def restore_defaults(self):
-        """Restore defaults"""
-        if self.theme_manager:
-            index = self.theme_combo.findText("Dark Modern")
-            if index >= 0:
-                self.theme_combo.setCurrentIndex(index)
-        
-        self.player_style_combo.setCurrentText("Modern")
-        self.animations_check.setChecked(True)
-        self.compact_check.setChecked(False)
-        self.autoplay_check.setChecked(True)
-        self.shuffle_check.setChecked(False)
-        self.loop_combo.setCurrentText("Playlist")
-        self.volume_slider.setValue(70)
-        self.remember_volume_check.setChecked(True)
-        self.backend_combo.setCurrentIndex(0)
-        
-        # ✅ NOVO: Reset tray i resume opcija
-        self.minimize_to_tray_check.setChecked(True)
-        self.resume_playback_check.setChecked(False)
+    def _update_backend_status(self):
+        """Update backend status label"""
+        backend_id = self.backend_combo.currentData()
+        if backend_id and backend_id in self.available_backends:
+            info = self.available_backends[backend_id]
+            status = f"✓ Available"
+            if info["has_eq"]:
+                status += " • Equalizer Support"
+            self.backend_status.setText(status)
+            self.backend_status.setStyleSheet("color: #4ade80;")
+        else:
+            self.backend_status.setText("⚠ Not available")
+            self.backend_status.setStyleSheet("color: #ff6b6b;")
     
-    def collect_settings(self):
-        """Collect all settings"""
-        return {
+    def _update_volume_label(self, value):
+        """Update volume label"""
+        self.volume_label.setText(f"{value}%")
+    
+    def _on_plugin_toggled(self, plugin_id: str, enabled: bool):
+        """Handle plugin toggle"""
+        if self.plugin_manager:
+            if enabled:
+                self.plugin_manager.enable_plugin(plugin_id)
+            else:
+                self.plugin_manager.disable_plugin(plugin_id)
+            print(f"✅ Plugin '{plugin_id}' {'enabled' if enabled else 'disabled'}")
+    
+    def _on_plugin_configure(self, plugin_id: str):
+        """Open plugin configuration"""
+        if self.plugin_manager:
+            try:
+                # Proveri da li već postoji keširani dialog/prozor
+                if plugin_id in self.plugin_dialogs:
+                    dialog = self.plugin_dialogs[plugin_id]
+                    # Ako je QWidget (prozor), samo pokaži i podesi fokus
+                    if isinstance(dialog, QWidget) and not isinstance(dialog, QDialog):
+                        dialog.show()
+                        dialog.raise_()
+                        dialog.activateWindow()
+                    # Ako je QDialog, exec() ponovo
+                    else:
+                        dialog.exec()
+                    return
+                
+                # Kreiraj novi dialog/prozor
+                dialog = self.plugin_manager.show_plugin_dialog(plugin_id, self.parent_window)
+                
+                # Keširaj ga za buduće otvaranje
+                if dialog:
+                    self.plugin_dialogs[plugin_id] = dialog
+                    print(f"✅ Cached dialog for plugin '{plugin_id}'")
+            except Exception as e:
+                print(f"❌ Error opening plugin config: {e}")
+                import traceback
+                traceback.print_exc()
+    
+    def preview_theme(self, theme_name):
+        """Preview selected theme"""
+        if self.theme_manager:
+            self.theme_manager.apply_theme(self.parent_window, theme_name)
+    
+    def restore_defaults(self):
+        """Restore default settings"""
+        reply = QMessageBox.question(
+            self, "Restore Defaults",
+            "Are you sure you want to restore all settings to default values?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if reply == QMessageBox.StandardButton.Yes:
+            self.theme_combo.setCurrentIndex(0)
+            self.style_combo.setCurrentIndex(0)
+            self.volume_slider.setValue(70)
+            self.minimize_check.setChecked(True)
+            self.resume_check.setChecked(False)
+    
+    def apply_settings(self):
+        """Apply and save settings"""
+        settings = {
             "appearance": {
                 "theme": self.theme_combo.currentText(),
-                "player_style": self.player_style_combo.currentText(),
-                "animations": self.animations_check.isChecked(),
-                "compact_layout": self.compact_check.isChecked()
+                "player_style": self.style_combo.currentText()
             },
             "audio": {
                 "backend": self.backend_combo.currentData(),
-                "default_volume": self.volume_slider.value(),
-                "remember_volume": self.remember_volume_check.isChecked()
+                "default_volume": self.volume_slider.value()
             },
             "playback": {
-                "autoplay": self.autoplay_check.isChecked(),
-                "shuffle": self.shuffle_check.isChecked(),
-                "loop_mode": self.loop_combo.currentText().lower(),
-                # ✅ NOVO
-                "minimize_to_tray": self.minimize_to_tray_check.isChecked(),
-                "resume_playback": self.resume_playback_check.isChecked()
-            },
-            "plugins": {}
+                "minimize_to_tray": self.minimize_check.isChecked(),
+                "resume_playback": self.resume_check.isChecked()
+            }
         }
-    
-    def apply_settings(self):
-        """Apply settings"""
-        settings = self.collect_settings()
         
         # Primeni temu
-        if self.theme_manager and self.parent_window:
+        if self.theme_manager:
             self.theme_manager.apply_theme(self.parent_window, settings["appearance"]["theme"])
         
         # Primeni player style
@@ -1025,6 +994,33 @@ class SettingsDialog(QDialog):
                 background-color: #667eea;
                 border-color: #667eea;
             }
+            
+            QTableWidget {
+                background-color: #1a1a2e;
+                alternate-background-color: #252540;
+                gridline-color: #333;
+                border: 1px solid #333;
+                border-radius: 6px;
+            }
+            
+            QTableWidget::item {
+                padding: 8px;
+            }
+            
+            QTableWidget::item:selected {
+                background-color: #667eea;
+                color: #ffffff;
+            }
+            
+            QHeaderView::section {
+                background-color: #2a2a4a;
+                color: #ffffff;
+                padding: 8px;
+                border: none;
+                border-right: 1px solid #333;
+                border-bottom: 1px solid #333;
+                font-weight: bold;
+            }
         """)
     
     def show_about_tab(self):
@@ -1047,6 +1043,14 @@ class SettingsDialog(QDialog):
                 self.tab_widget.setCurrentIndex(i)
                 break
         self.exec()
+    
+    def show_shortcuts_tab(self):
+        """✅ NOVO: Prikaži Shortcuts karticu"""
+        for i in range(self.tab_widget.count()):
+            if "Shortcuts" in self.tab_widget.tabText(i):
+                self.tab_widget.setCurrentIndex(i)
+                break
+        self.exec()
 
 
 # ===== HELPER FUNKCIJE =====
@@ -1062,6 +1066,11 @@ def show_plugins(parent=None):
 def show_audio_settings(parent=None):
     dialog = SettingsDialog(parent)
     dialog.show_audio_tab()
+
+def show_shortcuts(parent=None):
+    """✅ NOVO: Helper funkcija za prikaz Shortcuts taba"""
+    dialog = SettingsDialog(parent)
+    dialog.show_shortcuts_tab()
 
 def show_settings(parent=None):
     dialog = SettingsDialog(parent)

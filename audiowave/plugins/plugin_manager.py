@@ -3,10 +3,10 @@
 """
 Plugin Manager - Upravljanje pluginovima za AudioWave
 
-OmoguÄ‡ava:
+OmoguÃ„â€¡ava:
 - Registraciju pluginova
-- OmoguÄ‡avanje/onemoguÄ‡avanje pluginova
-- ÄŒuvanje stanja pluginova
+- OmoguÃ„â€¡avanje/onemoguÃ„â€¡avanje pluginova
+- Ã„Å’uvanje stanja pluginova
 - Context menu integraciju
 """
 
@@ -26,7 +26,7 @@ class PluginInfo:
     description: str
     version: str
     author: str
-    icon: str = "ðŸ”Œ"
+    icon: str = "Ã°Å¸â€Å’"
     enabled: bool = False
     has_dialog: bool = True
     has_widget: bool = False
@@ -65,14 +65,14 @@ class PluginManager(QObject):
         self.config_path = config_path or os.path.expanduser("~/.audiowave/plugins.json")
         self.logger = logging.getLogger(__name__)
         
-        # Registruj ugraÄ‘ene pluginove
+        # Registruj ugraÃ„â€˜ene pluginove
         self._register_builtin_plugins()
         
-        # UÄitaj stanje
+        # UÃ„Âitaj stanje
         self._load_state()
     
     def _register_builtin_plugins(self):
-        """Registruj ugraÄ‘ene pluginove"""
+        """Registruj ugraÃ„â€˜ene pluginove"""
         
         # Equalizer plugin
         try:
@@ -91,7 +91,7 @@ class PluginManager(QObject):
             description="10-band equalizer with presets",
             version="1.0.0",
             author="AudioWave",
-            icon="ðŸŽ›ï¸",
+            icon="Ã°Å¸Å½â€ºÃ¯Â¸Â",
             enabled=False,
             has_dialog=True,
             has_widget=True,
@@ -118,7 +118,7 @@ class PluginManager(QObject):
             description="Search and display song lyrics",
             version="1.0.0",
             author="AudioWave",
-            icon="ðŸŽ¤",
+            icon="Ã°Å¸Å½Â¤",
             enabled=False,
             has_dialog=True,
             has_widget=True,
@@ -128,28 +128,40 @@ class PluginManager(QObject):
             widget_class=lyrics_widget,
             context_menu_items=[
                 {
-                    "text": "ðŸŽ¤ Search Lyrics",
+                    "text": "Ã°Å¸Å½Â¤ Search Lyrics",
                     "action": "search_lyrics",
                     "separator_before": True,
                 }
             ]
         ))
         
-        # Visualizer plugin (placeholder)
+        # Visualizer plugin - ✅ IMPLEMENTIRAN!
+        try:
+            from plugins.visualizer.visualizer_plugin import VisualizerDialog, VisualizerWidget
+            visualizer_dialog = VisualizerDialog
+            visualizer_widget = VisualizerWidget
+            self.logger.info("Visualizer plugin loaded successfully")
+        except ImportError as e:
+            visualizer_dialog = None
+            visualizer_widget = None
+            self.logger.warning(f"Visualizer plugin not found: {e}")
+        
         self.register_plugin(PluginInfo(
             id="visualizer",
             name="Visualizer",
-            description="Audio visualization effects",
-            version="0.1.0",
+            description="Audio visualization effects (Spectrum, Waveform, Circular, Particles)",
+            version="1.0.0",
             author="AudioWave",
-            icon="ðŸ“Š",
+            icon="🎵",
             enabled=False,
             has_dialog=True,
-            has_widget=False,
+            has_widget=True,
             has_context_menu=False,
             shortcut="F6",
-            dialog_class=None,  # TODO: Implementirati
+            dialog_class=visualizer_dialog,
+            widget_class=visualizer_widget,
         ))
+
         
         # Sleep Timer plugin
         try:
@@ -168,7 +180,7 @@ class PluginManager(QObject):
             description="Auto-stop or quit after specified time",
             version="1.0.0",
             author="AudioWave",
-            icon="â°",
+            icon="Ã¢ÂÂ°",
             enabled=False,
             has_dialog=True,
             has_widget=True,  # Widget je helper za timer management
@@ -195,8 +207,8 @@ class PluginManager(QObject):
             description="Create custom themes for AudioWave",
             version="1.0.0",
             author="AudioWave",
-            icon="ðŸŽ¨",
-            enabled=True,  # Uvijek omoguÄ‡en jer je koristan za sve!
+            icon="Ã°Å¸Å½Â¨",
+            enabled=True,  # Uvijek omoguÃ„â€¡en jer je koristan za sve!
             has_dialog=True,
             has_widget=True,
             has_context_menu=False,
@@ -220,8 +232,8 @@ class PluginManager(QObject):
             description="Search and play live radio stations from radio-browser.info",
             version="1.0.0",
             author="TrayWave Team",
-            icon="ðŸ“¡",
-            enabled=True,  # Defaultno omogućen
+            icon="Ã°Å¸â€œÂ¡",
+            enabled=True,  # Defaultno omoguÄ‡en
             has_dialog=True,  # Ima configure metodu
             has_widget=True,
             has_context_menu=False,
@@ -254,13 +266,13 @@ class PluginManager(QObject):
     
     def is_enabled(self, plugin_id: str) -> bool:
         """
-        Proveri da li je plugin omoguÄ‡en.
+        Proveri da li je plugin omoguÃ„â€¡en.
         
         Args:
             plugin_id: ID plugina
             
         Returns:
-            True ako je plugin omoguÄ‡en, False inaÄe
+            True ako je plugin omoguÃ„â€¡en, False inaÃ„Âe
         """
         plugin = self.plugins.get(plugin_id)
         if not plugin:
@@ -278,16 +290,16 @@ class PluginManager(QObject):
     
     def get_enabled_plugins(self) -> List[PluginInfo]:
         """
-        Dobij listu omoguÄ‡enih pluginova.
+        Dobij listu omoguÃ„â€¡enih pluginova.
         
         Returns:
-            Lista omoguÄ‡enih PluginInfo objekata
+            Lista omoguÃ„â€¡enih PluginInfo objekata
         """
         return [p for p in self.plugins.values() if p.enabled]
     
     def enable_plugin(self, plugin_id: str):
         """
-        OmoguÄ‡i plugin.
+        OmoguÃ„â€¡i plugin.
         
         Args:
             plugin_id: ID plugina
@@ -311,7 +323,7 @@ class PluginManager(QObject):
     
     def disable_plugin(self, plugin_id: str):
         """
-        OnemoguÄ‡i plugin.
+        OnemoguÃ„â€¡i plugin.
         
         Args:
             plugin_id: ID plugina
@@ -352,7 +364,7 @@ class PluginManager(QObject):
     
     def show_plugin_dialog(self, plugin_id: str, parent=None, **kwargs):
         """
-        PrikaÅ¾i dialog plugina.
+        PrikaÃ…Â¾i dialog plugina.
         
         Args:
             plugin_id: ID plugina
@@ -377,14 +389,14 @@ class PluginManager(QObject):
         if 'app' not in kwargs and parent and hasattr(parent, 'app'):
             kwargs['app'] = parent.app
         
-        # Prosledi plugin_manager ako nije veÄ‡ prosleÄ‘en
+        # Prosledi plugin_manager ako nije veÃ„â€¡ prosleÃ„â€˜en
         if 'plugin_manager' not in kwargs:
             kwargs['plugin_manager'] = self
         
         try:
             dialog = plugin.dialog_class(parent, **kwargs)
             
-            # Za Sleep Timer, poveÅ¾i signale
+            # Za Sleep Timer, poveÃ…Â¾i signale
             if plugin_id == "sleep_timer":
                 self._connect_sleep_timer_signals(dialog, parent, kwargs)
             
@@ -394,12 +406,12 @@ class PluginManager(QObject):
             self.logger.error(f"Error showing dialog for plugin {plugin_id}: {e}")
     
     def _connect_sleep_timer_signals(self, dialog, parent, kwargs):
-        """PoveÅ¾i Sleep Timer signale sa widget-om"""
+        """PoveÃ…Â¾i Sleep Timer signale sa widget-om"""
         try:
             # Kreiraj ili dobij Sleep Timer widget
             app = kwargs.get('app', None)
             if app and hasattr(app, 'sleep_timer_widget'):
-                # VeÄ‡ postoji
+                # VeÃ„â€¡ postoji
                 timer_widget = app.sleep_timer_widget
             else:
                 # Kreiraj novi
@@ -408,7 +420,7 @@ class PluginManager(QObject):
                 if app:
                     app.sleep_timer_widget = timer_widget
             
-            # PoveÅ¾i signal
+            # PoveÃ…Â¾i signal
             dialog.timer_started.connect(timer_widget.start_timer)
             
         except Exception as e:
@@ -431,17 +443,17 @@ class PluginManager(QObject):
         if not plugin or not plugin.enabled or not plugin.widget_class:
             return None
         
-        # âœ… FIX: Za Radio Browser, prosledi sve argumente direktno
-        # RadioBrowserPlugin sada moÅ¾e da ekstraktuje Å¡ta mu treba
+        # Ã¢Å“â€¦ FIX: Za Radio Browser, prosledi sve argumente direktno
+        # RadioBrowserPlugin sada moÃ…Â¾e da ekstraktuje Ã…Â¡ta mu treba
         try:
-            # Za sve pluginove (ukljuÄujuÄ‡i Radio Browser), prosledi sve argumente
+            # Za sve pluginove (ukljuÃ„ÂujuÃ„â€¡i Radio Browser), prosledi sve argumente
             self.logger.info(f"Creating widget for plugin: {plugin_id}")
             
             # Prosledi app ako postoji u kwargs
             if 'app' not in kwargs and parent and hasattr(parent, 'app'):
                 kwargs['app'] = parent.app
             
-            # Prosledi plugin_manager ako nije veÄ‡ prosleÄ‘en
+            # Prosledi plugin_manager ako nije veÃ„â€¡ prosleÃ„â€˜en
             if 'plugin_manager' not in kwargs:
                 kwargs['plugin_manager'] = self
             
@@ -449,7 +461,7 @@ class PluginManager(QObject):
             widget = plugin.widget_class(parent, **kwargs)
             self.logger.info(f"Widget created for plugin: {plugin_id}")
             
-            # PoveÅ¾i signal za dodavanje radio stanica
+            # PoveÃ…Â¾i signal za dodavanje radio stanica
             if hasattr(widget, 'add_to_playlist'):
                 widget.add_to_playlist.connect(self._handle_radio_station_add)
                 self.logger.info(f"Connected add_to_playlist signal for plugin: {plugin_id}")
@@ -465,14 +477,14 @@ class PluginManager(QObject):
     def _handle_radio_station_add(self, name: str, url: str):
         """
         Handler za dodavanje radio stanice u playlist.
-        Emituje globalni signal koji glavni prozor moÅ¾e da hendluje.
+        Emituje globalni signal koji glavni prozor moÃ…Â¾e da hendluje.
         """
         self.logger.info(f"Radio station add requested: {name} - {url}")
         self.add_radio_to_playlist.emit(name, url)
     
     def get_context_menu_items(self) -> List[Dict]:
         """
-        Dobij sve context menu iteme od omoguÄ‡enih pluginova.
+        Dobij sve context menu iteme od omoguÃ„â€¡enih pluginova.
         
         Returns:
             Lista menu itema
@@ -524,7 +536,7 @@ class PluginManager(QObject):
                     self.logger.error(f"Error handling context menu action {action}: {e}")
     
     def _save_state(self):
-        """SaÄuvaj stanje pluginova"""
+        """SaÃ„Âuvaj stanje pluginova"""
         try:
             # Kreiraj direktorijum ako ne postoji
             os.makedirs(os.path.dirname(self.config_path), exist_ok=True)
@@ -542,7 +554,7 @@ class PluginManager(QObject):
             self.logger.error(f"Error saving plugin state: {e}")
     
     def _load_state(self):
-        """UÄitaj stanje pluginova"""
+        """UÃ„Âitaj stanje pluginova"""
         try:
             if os.path.exists(self.config_path):
                 with open(self.config_path, 'r', encoding='utf-8') as f:
@@ -586,19 +598,19 @@ if __name__ == "__main__":
     import sys
     from PyQt6.QtWidgets import QApplication
     
-    # PodeÅ¡avanje logginga za test
+    # PodeÃ…Â¡avanje logginga za test
     logging.basicConfig(level=logging.INFO)
     
     app = QApplication(sys.argv)
     pm = get_plugin_manager()
     
     print("\n" + "="*50)
-    print("ðŸŽµ AUDIOWAVE PLUGIN MANAGER")
+    print("Ã°Å¸Å½Âµ AUDIOWAVE PLUGIN MANAGER")
     print("="*50)
     
     print("\n=== All Plugins ===")
     for plugin in pm.get_all_plugins():
-        status = "âœ…" if plugin.enabled else "âŒ"
+        status = "Ã¢Å“â€¦" if plugin.enabled else "Ã¢ÂÅ’"
         print(f"{status} {plugin.icon} {plugin.name}")
         print(f"   ID: {plugin.id}")
         print(f"   Desc: {plugin.description}")
@@ -623,5 +635,5 @@ if __name__ == "__main__":
     print(f"Disabled: {len(all_plugins) - enabled_count}")
     
     print("\n" + "="*50)
-    print("Test zavrÅ¡en!")
+    print("Test zavrÃ…Â¡en!")
     print("="*50)

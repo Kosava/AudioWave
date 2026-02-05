@@ -86,6 +86,10 @@ class GStreamerEngine(QObject):
         self.volume_element = None
         self.preamp_element = None  # NOVO: zaseban preamp element
         
+        # Spectrum analyzer (za Visualizer plugin)
+        self.spectrum_element = None
+        self.spectrum_data = [0.0] * 64
+        
         # Position timer
         self.position_timer = None
         
@@ -708,6 +712,133 @@ class GStreamerEngine(QObject):
         """Proveri da li engine podržava equalizer"""
         return self.equalizer is not None
     
+    # ========== SPECTRUM ANALYZER (za Visualizer plugin) ==========
+    
+    def setup_spectrum_analyzer(self, bands=64, threshold=-80, interval=16666666):
+        """
+        Setup GStreamer spectrum analyzer element za Visualizer plugin
+        
+        Args:
+            bands: Number of frequency bands (default: 64)
+            threshold: Minimum magnitude threshold in dB (default: -80)
+            interval: Update interval in nanoseconds (default: ~60fps = 16.6ms)
+        
+        Returns:
+            bool: True ako je uspešno, False ako nije
+        """
+        try:
+            # Kreiraj spectrum element
+            spectrum = Gst.ElementFactory.make("spectrum", "spectrum")
+            if not spectrum:
+                print("❌ Could not create spectrum element")
+                return False
+            
+            # Configure spectrum
+            spectrum.set_property("bands", bands)
+            spectrum.set_property("threshold", threshold)
+            spectrum.set_property("interval", interval)
+            spectrum.set_property("post-messages", True)
+            spectrum.set_property("message-magnitude", True)
+            
+            # Dodaj u pipeline POSLE audioconvert elementa, PRE equalizera
+            self.pipeline.add(spectrum)
+            
+            # Link: audioconvert -> spectrum -> equalizer (ili volume ako nema EQ)
+            if self.equalizer:
+                # Unlink audioconvert -> equalizer
+                self.audioconvert.unlink(self.equalizer)
+                
+                # Link sa spectrum u sredini
+                if not self.audioconvert.link(spectrum):
+                    print("❌ Failed to link audioconvert to spectrum")
+                    self.pipeline.remove(spectrum)
+                    self.audioconvert.link(self.equalizer)
+                    return False
+                
+                if not spectrum.link(self.equalizer):
+                    print("❌ Failed to link spectrum to equalizer")
+                    self.pipeline.remove(spectrum)
+                    self.audioconvert.link(self.equalizer)
+                    return False
+            else:
+                # Unlink audioconvert -> volume
+                self.audioconvert.unlink(self.volume_element)
+                
+                # Link sa spectrum u sredini
+                if not self.audioconvert.link(spectrum):
+                    print("❌ Failed to link audioconvert to spectrum")
+                    self.pipeline.remove(spectrum)
+                    self.audioconvert.link(self.volume_element)
+                    return False
+                
+                if not spectrum.link(self.volume_element):
+                    print("❌ Failed to link spectrum to volume")
+                    self.pipeline.remove(spectrum)
+                    self.audioconvert.link(self.volume_element)
+                    return False
+            
+            # Connect message handler
+            if self.bus:
+                self.bus.connect("message::element", self._on_spectrum_message)
+            
+            self.spectrum_element = spectrum
+            self.spectrum_data = [0.0] * bands
+            
+            print(f"✅ Spectrum analyzer configured: {bands} bands, {1000000000/interval:.1f} fps")
+            return True
+                
+        except Exception as e:
+            print(f"❌ Error setting up spectrum: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+    
+    def _on_spectrum_message(self, bus, message):
+        """
+        Handle spectrum messages from GStreamer
+        
+        Ova metoda se poziva svaki put kada spectrum element pošalje poruku
+        sa novim frekvencijskim podacima.
+        """
+        try:
+            if message.get_structure() and message.get_structure().get_name() == "spectrum":
+                magnitudes = message.get_structure().get_value("magnitude")
+                
+                if magnitudes and len(magnitudes) > 0:
+                    # Convert dB to 0.0-1.0 range
+                    # dB range: typically -80 to 0
+                    # Normalize to 0.0-1.0
+                    self.spectrum_data = [
+                        max(0.0, min(1.0, (mag + 80) / 80)) 
+                        for mag in magnitudes
+                    ]
+        except Exception as e:
+            # Silent failure - spectrum messages se šalju vrlo često
+            pass
+    
+    def get_spectrum_data(self):
+        """
+        Get current spectrum data za Visualizer
+        
+        Returns:
+            List[float]: Lista frekvencijskih magnitud (0.0 do 1.0)
+                        Ako spectrum nije aktivan, vraća listu nula.
+        """
+        if hasattr(self, 'spectrum_data') and self.spectrum_data:
+            return self.spectrum_data.copy()
+        else:
+            # Return zeros if spectrum not initialized
+            return [0.0] * 64
+    
+    def has_spectrum_analyzer(self) -> bool:
+        """
+        Proveri da li je spectrum analyzer aktivan
+        
+        Returns:
+            bool: True ako je spectrum element kreiran i aktivan
+        """
+        return hasattr(self, 'spectrum_element') and self.spectrum_element is not None
+    
     # ========== STATE ==========
     
     def is_playing(self) -> bool:
@@ -871,6 +1002,15 @@ class GStreamerEngine(QObject):
             except Exception as e:
                 print(f"⚠️ [GStreamer] Error stopping pipeline: {e}")
             
+            # 4a. Očisti spectrum element
+            try:
+                if hasattr(self, 'spectrum_element') and self.spectrum_element:
+                    self.spectrum_element = None
+                if hasattr(self, 'spectrum_data'):
+                    self.spectrum_data = []
+            except Exception as e:
+                print(f"⚠️ [GStreamer] Error cleaning up spectrum: {e}")
+            
             # 4. Process GLib events
             try:
                 from gi.repository import GLib
@@ -955,6 +1095,12 @@ if __name__ == "__main__":
         # Test volume
         engine.set_volume(80)
         print(f"✅ Volume test: {engine.get_volume()}")
+        
+        # Test spectrum analyzer
+        print("🎨 Testing spectrum analyzer...")
+        spectrum_success = engine.setup_spectrum_analyzer()
+        print(f"✅ Spectrum analyzer: {spectrum_success}")
+        print(f"✅ Has spectrum analyzer: {engine.has_spectrum_analyzer()}")
         
         # Cleanup
         print("🧪 Cleaning up engine...")
